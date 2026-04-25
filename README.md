@@ -1,4 +1,4 @@
-# cameron-personal-project
+# loggy
 
 Personal project scaffold.
 
