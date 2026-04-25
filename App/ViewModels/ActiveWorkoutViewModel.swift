@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import GRDB
 
 @MainActor
 final class ActiveWorkoutViewModel: ObservableObject {

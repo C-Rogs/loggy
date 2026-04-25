@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ActiveWorkoutView: View {
     @EnvironmentObject private var env: AppEnvironment
@@ -203,23 +204,23 @@ private struct SetRow: View {
             switch mode {
             case .weightReps, .bodyweightReps:
                 HStack(spacing: 10) {
-                    field("kg", text: $weightText, keyboard: .decimalPad) {
+                    field("kg", text: $weightText, keyboard: UIKeyboardType.decimalPad) {
                         onChange(Double(weightText.replacingOccurrences(of: ",", with: ".")), Int(repsText), nil, nil, nil)
                     }
-                    field("reps", text: $repsText, keyboard: .numberPad) {
+                    field("reps", text: $repsText, keyboard: UIKeyboardType.numberPad) {
                         onChange(Double(weightText.replacingOccurrences(of: ",", with: ".")), Int(repsText), nil, nil, nil)
                     }
                 }
             case .duration:
-                field("sec", text: $durText, keyboard: .numberPad) {
+                field("sec", text: $durText, keyboard: UIKeyboardType.numberPad) {
                     onChange(nil, nil, nil, Int(durText), nil)
                 }
             case .distanceDuration:
                 HStack(spacing: 10) {
-                    field("km", text: $distText, keyboard: .decimalPad) {
+                    field("km", text: $distText, keyboard: UIKeyboardType.decimalPad) {
                         onChange(nil, nil, Double(distText.replacingOccurrences(of: ",", with: ".")), Int(durText), nil)
                     }
-                    field("sec", text: $durText, keyboard: .numberPad) {
+                    field("sec", text: $durText, keyboard: UIKeyboardType.numberPad) {
                         onChange(nil, nil, Double(distText.replacingOccurrences(of: ",", with: ".")), Int(durText), nil)
                     }
                 }
@@ -259,7 +260,7 @@ private struct SetRow: View {
         }
     }
 
-    private func field(_ title: String, text: Binding<String>, keyboard: KeyboardType, commit: @escaping () -> Void) -> some View {
+    private func field(_ title: String, text: Binding<String>, keyboard: UIKeyboardType, commit: @escaping () -> Void) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.caption2).foregroundStyle(.secondary)
             TextField(title, text: text)

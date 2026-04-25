@@ -24,6 +24,14 @@ open Loggy.xcodeproj
 
 The first run generates `Loggy.xcodeproj` from [`project.yml`](project.yml). Do not hand-edit the pbxproj; change `project.yml` or Swift sources under [`App/`](App/) instead.
 
+### Command-line build
+
+If `xcodebuild` reports no eligible simulator destinations, install a simulator runtime (Xcode **Settings → Components**, or `xcodebuild -downloadPlatform iOS`), then:
+
+```bash
+xcodebuild -scheme Loggy -destination 'generic/platform=iOS Simulator' -configuration Debug build
+```
+
 ## Swift source layout
 
 See [`App/`](App/) — Domain, Persistence (GRDB), Services, ViewModels, UI, Widgets (Live Activity extension).
