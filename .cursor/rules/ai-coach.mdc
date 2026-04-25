@@ -1,0 +1,16 @@
+---
+description: Session Coach and Intra-Session Coach design rules for future AI guidance
+alwaysApply: false
+---
+
+- AI coaching is a future subsystem, not part of the core workout truth.
+- Split coaching into:
+  - Session Coach: runs before/after workouts and between sessions
+  - Intra-Session Coach: evaluates after each completed set during a live workout
+- Intra-Session Coach must be deterministic first:
+  - rep drop-off
+  - missed targets
+  - long or short rest vs target
+  - unusual fatigue pattern
+- LLM-generated text should explain recommendations, not invent the core recommendation.
+- Store coach recommendations in dedicated tables and never let AI directly mutate set rows without an explicit user action.

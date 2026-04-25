@@ -1,0 +1,25 @@
+---
+description: Hevy-like workout lifecycle, set completion, recovery, and previous-value rules
+alwaysApply: true
+---
+
+- The workout lifecycle must match Hevy closely:
+  1. Start workout
+  2. Add exercises
+  3. Log and edit sets inline
+  4. Tap checkmark to complete a set
+  5. Start per-exercise rest timer automatically
+  6. Continue through exercises
+  7. Finish workout
+  8. Keep workout editable in history
+- There can be at most one active workout session at a time.
+- A workout may be recoverable after app restart or crash.
+- On app relaunch, if an active workout exists, offer Resume / Finish / Discard.
+- A completed set remains editable.
+- Empty draft rows may exist in UI state, but not as canonical DB rows.
+- “Previous” values are derived from historical completed sets, never stored inline.
+- Matching order for previous values:
+  1. Same exercise
+  2. Same set-type bucket if available
+  3. Same working-set ordinal if available
+  4. Most recent completed set fallback

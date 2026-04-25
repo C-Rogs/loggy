@@ -1,0 +1,28 @@
+---
+description: Core project architecture and source-of-truth rules for the workout app
+alwaysApply: true
+---
+
+- Build a single-user local-first iOS workout logger in SwiftUI.
+- Use SQLite via GRDB for persistence unless the project explicitly switches away later.
+- Use a layered structure:
+  - Domain: pure models and rules
+  - Persistence: database, migrations, repositories
+  - Services: timer, history matching, PRs, import, coaching
+  - ViewModels: screen state and user actions
+  - UI: SwiftUI views only
+- The source of truth is normalized tables, not nested JSON blobs.
+- The primary entities are:
+  - Exercise
+  - ExerciseAlias
+  - WorkoutSession
+  - WorkoutSessionExercise
+  - WorkoutBlock
+  - SetEntry
+  - ActiveWorkoutState
+  - RestTimerState
+  - WorkoutTemplate
+  - WorkoutTemplateExercise
+- Keep business rules out of SwiftUI view files.
+- Make all user actions work offline.
+- Treat remote sync as optional mirroring, not required for core behavior.

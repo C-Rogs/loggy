@@ -1,0 +1,60 @@
+name: Loggy
+options:
+  bundleIdPrefix: com.loggy
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: 6.29.3
+
+targets:
+  Loggy:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - "Widgets/LiveActivity/**"
+          - "Resources/**"
+      - path: App/Shared
+    resources:
+      - path: App/Resources/Assets.xcassets
+      - path: Docs/04_DATABASE_SCHEMA.sql
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.loggy.app
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: false
+        INFOPLIST_FILE: App/Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        SWIFT_VERSION: "5.10"
+    dependencies:
+      - package: GRDB
+        product: GRDB
+      - target: LoggyLiveActivity
+        embed: true
+
+  LoggyLiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: App/Widgets/LiveActivity
+      - path: App/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.loggy.app.liveactivity
+        INFOPLIST_FILE: App/Widgets/LiveActivity/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        SWIFT_VERSION: "5.10"
+
+schemes:
+  Loggy:
+    build:
+      targets:
+        Loggy: all
+        LoggyLiveActivity: all
+    run:
+      config: Debug

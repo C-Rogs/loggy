@@ -1,0 +1,22 @@
+---
+description: Database and persistence rules for workout logging, timers, templates, and future mirroring
+alwaysApply: true
+---
+
+- Persist timestamps as ISO 8601 strings in UTC.
+- Use UUID strings as primary keys for all major entities.
+- Include created_at and updated_at on mutable rows.
+- Prefer deleted_at for soft deletion where history or future sync matters.
+- Use canonical metric storage internally:
+  - weight in kg
+  - distance in km
+  - duration in seconds
+- Support these core set payload shapes:
+  - weight + reps
+  - bodyweight reps
+  - duration only
+  - distance + optional duration
+- Timer state must be timestamp-driven, not just a remaining-seconds integer.
+- Exercise identity must support canonical names plus aliases.
+- Store caches for workout totals and history snapshots, but keep SetEntry as source of truth.
+- Keep future AI recommendation data in separate tables from workout truth.

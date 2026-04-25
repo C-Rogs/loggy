@@ -1,0 +1,24 @@
+---
+description: Interaction and UI rules for the active workout experience, glass styling, and Dynamic Island
+alwaysApply: true
+---
+
+- Prioritize logging speed over visual flourish.
+- The active workout screen should be built around exercise cards with set rows.
+- Use inline editing for set values.
+- Do not use modals for normal set edits.
+- One tap should complete a set.
+- Add Set should clone the prior set when possible.
+- Keep the timer visible and lightweight.
+- Use glass/material effects only on structural containers such as:
+  - top header
+  - summary strip
+  - timer bar
+  - sheets
+  - tab/navigation chrome
+- Use solid, crisp surfaces for set rows and numeric input cells.
+- Dynamic Island and Live Activity should show only glanceable data:
+  - elapsed workout time
+  - current exercise name
+  - active rest countdown
+  - optionally completed set count
