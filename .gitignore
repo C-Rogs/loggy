@@ -28,3 +28,7 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 
+# Local CI / agent Xcode builds
+.derivedData_ci/
+build/
+
