@@ -9,11 +9,16 @@ struct ActiveWorkoutView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var appleHealth: AppleHealthWorkoutService
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
 
     @StateObject private var vm: ActiveWorkoutViewModel
 
     @State private var showExercisePicker = false
     @State private var howToTarget: ExerciseHowToTarget?
+    @State private var showFinishSheet = false
+    @State private var confirmDiscardSession = false
+    @State private var sessionExercisePendingRemoval: String?
 
     init(sessionId: String, env: AppEnvironment) {
         _vm = StateObject(wrappedValue: ActiveWorkoutViewModel(sessionId: sessionId, env: env))
@@ -37,7 +42,7 @@ struct ActiveWorkoutView: View {
 
                     ForEach(Array(vm.exercises.enumerated()), id: \.element.id) { index, card in
                         Section {
-                            exerciseHeader(card)
+                            exerciseHeader(card, index: index)
                             sets(card)
                         } header: {
                             EmptyView()
@@ -61,7 +66,7 @@ struct ActiveWorkoutView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(Color(.systemGroupedBackground))
+                .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
             }
 
             if let visual = vm.restTimerVisual,
@@ -70,24 +75,52 @@ struct ActiveWorkoutView: View {
             {
                 RestTimerScreenBorderOverlay(
                     visual: visual,
-                    onSkip: { vm.skipRest() }
+                    oledPreference: loggyOLEDDark,
+                    colorScheme: colorScheme,
+                    onSkip: { vm.skipRest() },
+                    onAdjust: { vm.adjustRestTimer(by: $0) }
                 )
                 .transition(.opacity)
             }
         }
-        .navigationTitle(vm.sessionStatus == .active ? "Active workout" : "Workout")
+        .navigationTitle(vm.sessionStatus == .active ? " " : "Workout")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(
+            LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+            for: .navigationBar
+        )
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Close") { dismiss() }
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                if vm.sessionStatus == .active {
-                    Button("Finish") {
-                        vm.finish()
-                        dismiss()
+            if vm.sessionStatus == .active {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 1) {
+                        Text(vm.sessionTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Workout" : vm.sessionTitle)
+                            .font(.headline)
+                            .lineLimit(1)
+                        Text(formatClock(vm.elapsedSeconds))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
                     }
-                    .fontWeight(.semibold)
+                    .frame(maxWidth: 200)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 4) {
+                        Menu {
+                            Button("Discard workout", systemImage: "trash", role: .destructive) {
+                                confirmDiscardSession = true
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                                .font(.body.weight(.medium))
+                        }
+                        Button("Finish") {
+                            showFinishSheet = true
+                        }
+                        .fontWeight(.semibold)
+                    }
                 }
             }
         }
@@ -111,6 +144,55 @@ struct ActiveWorkoutView: View {
         .sheet(item: $howToTarget) { target in
             ExerciseHowToSheet(exerciseId: target.id)
                 .environmentObject(env)
+        }
+        .sheet(isPresented: $showFinishSheet) {
+            FinishWorkoutSummarySheet(
+                title: vm.sessionTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Workout" : vm.sessionTitle,
+                elapsedSeconds: vm.elapsedSeconds,
+                volumeKg: vm.totalVolume,
+                completedSets: vm.completedSetCount,
+                totalReps: vm.totalRepCount,
+                oledPreference: loggyOLEDDark,
+                colorScheme: colorScheme,
+                onConfirm: {
+                    vm.finish()
+                    showFinishSheet = false
+                    dismiss()
+                },
+                onCancel: {
+                    showFinishSheet = false
+                }
+            )
+        }
+        .confirmationDialog(
+            "Discard this workout? Sets and exercises will be lost.",
+            isPresented: $confirmDiscardSession,
+            titleVisibility: .visible
+        ) {
+            Button("Discard workout", role: .destructive) {
+                vm.discard()
+                confirmDiscardSession = false
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog(
+            "Remove this exercise and all of its sets?",
+            isPresented: Binding(
+                get: { sessionExercisePendingRemoval != nil },
+                set: { if !$0 { sessionExercisePendingRemoval = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove exercise", role: .destructive) {
+                if let id = sessionExercisePendingRemoval {
+                    vm.removeSessionExercise(sessionExerciseId: id)
+                }
+                sessionExercisePendingRemoval = nil
+            }
+            Button("Cancel", role: .cancel) {
+                sessionExercisePendingRemoval = nil
+            }
         }
     }
 
@@ -160,12 +242,25 @@ struct ActiveWorkoutView: View {
                 }
             }
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(addExerciseBarFill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                .strokeBorder(
+                    LoggyTheme.isOLEDDarkCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme)
+                        ? Color.white.opacity(0.1)
+                        : Color.primary.opacity(0.08),
+                    lineWidth: 1
+                )
         )
         .padding(.vertical, 6)
+    }
+
+    private var addExerciseBarFill: AnyShapeStyle {
+        if LoggyTheme.isOLEDDarkCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme) {
+            AnyShapeStyle(Color(white: 0.1))
+        } else {
+            AnyShapeStyle(.regularMaterial)
+        }
     }
 
     private var summaryStrip: some View {
@@ -191,14 +286,26 @@ struct ActiveWorkoutView: View {
                 Text("Sets").font(.caption).foregroundStyle(.secondary)
                 Text("\(vm.completedSetCount)").font(.headline)
             }
+            Spacer()
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Reps").font(.caption).foregroundStyle(.secondary)
+                Text("\(vm.totalRepCount)").font(.headline).monospacedDigit()
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.materialCornerRadius, style: .continuous))
+        .background(summaryStripFill, in: RoundedRectangle(cornerRadius: DesignTokens.materialCornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
         .padding(.horizontal, 12)
         .padding(.top, 8)
+    }
+
+    private var summaryStripFill: AnyShapeStyle {
+        if LoggyTheme.isOLEDDarkCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme) {
+            AnyShapeStyle(LoggyTheme.structuralBarFill(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
+        } else {
+            AnyShapeStyle(.ultraThinMaterial)
+        }
     }
 
     private func timerStrip(rest: Int) -> some View {
@@ -211,14 +318,22 @@ struct ActiveWorkoutView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(.thinMaterial)
+        .background(timerStripFill, in: RoundedRectangle(cornerRadius: DesignTokens.materialCornerRadius, style: .continuous))
         .padding(.horizontal, 12)
         .padding(.top, 6)
     }
 
-    private func exerciseHeader(_ card: SessionExerciseCard) -> some View {
+    private var timerStripFill: AnyShapeStyle {
+        if LoggyTheme.isOLEDDarkCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme) {
+            AnyShapeStyle(LoggyTheme.structuralBarFill(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
+        } else {
+            AnyShapeStyle(.thinMaterial)
+        }
+    }
+
+    private func exerciseHeader(_ card: SessionExerciseCard, index: Int) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(alignment: .top, spacing: 8) {
                 Button {
                     howToTarget = ExerciseHowToTarget(id: card.exerciseId)
                 } label: {
@@ -228,7 +343,38 @@ struct ActiveWorkoutView: View {
                         .multilineTextAlignment(.leading)
                 }
                 .buttonStyle(.plain)
-                Spacer()
+                Spacer(minLength: 0)
+                if vm.sessionStatus != .discarded {
+                    Menu {
+                        Button {
+                            vm.moveExercise(fromIndex: index, direction: -1)
+                        } label: {
+                            Label("Move up", systemImage: "arrow.up")
+                        }
+                        .disabled(index == 0)
+
+                        Button {
+                            vm.moveExercise(fromIndex: index, direction: 1)
+                        } label: {
+                            Label("Move down", systemImage: "arrow.down")
+                        }
+                        .disabled(index >= vm.exercises.count - 1)
+
+                        Divider()
+
+                        Button(role: .destructive) {
+                            sessionExercisePendingRemoval = card.id
+                        } label: {
+                            Label("Remove exercise", systemImage: "minus.circle")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 36, height: 36)
+                            .contentShape(Rectangle())
+                    }
+                }
             }
 
             TextField("Exercise notes", text: Binding(
@@ -251,7 +397,7 @@ struct ActiveWorkoutView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
+                .fill(LoggyTheme.elevatedGroupedCard(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
         )
         .shadow(color: .black.opacity(0.06), radius: DesignTokens.cardShadowRadius, y: DesignTokens.cardShadowY)
         .padding(.vertical, 6)
@@ -263,6 +409,8 @@ struct ActiveWorkoutView: View {
                 mode: card.exerciseMode,
                 set: set,
                 canMutate: vm.sessionStatus != .discarded,
+                oledPreference: loggyOLEDDark,
+                colorScheme: colorScheme,
                 onChange: { w, r, dkm, dur, rpe in
                     vm.updateSet(setId: set.id, weight: w, reps: r, distanceKm: dkm, duration: dur, rpe: rpe)
                 },
@@ -309,6 +457,72 @@ struct ActiveWorkoutView: View {
         let m = seconds / 60
         let s = seconds % 60
         return String(format: "%d:%02d", m, s)
+    }
+}
+
+private struct FinishWorkoutSummarySheet: View {
+    let title: String
+    let elapsedSeconds: Int
+    let volumeKg: Double
+    let completedSets: Int
+    let totalReps: Int
+    let oledPreference: Bool
+    let colorScheme: ColorScheme
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    private func formatClock(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%d:%02d", m, s)
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text(title)
+                        .font(.title3.weight(.semibold))
+                        .listRowBackground(Color.clear)
+                    LabeledContent("Duration", value: formatClock(elapsedSeconds))
+                    LabeledContent("Volume", value: "\(Int(volumeKg)) kg")
+                    LabeledContent("Sets completed", value: "\(completedSets)")
+                    LabeledContent("Reps (logged)", value: "\(totalReps)")
+                }
+                Section {
+                    Button("Finish & save") {
+                        onConfirm()
+                    }
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+
+                    Button("Keep editing") {
+                        onCancel()
+                        dismiss()
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(LoggyTheme.groupedCanvas(oledPreference: oledPreference, colorScheme: colorScheme))
+            .navigationTitle("Summary")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(
+                LoggyTheme.navigationBarBackground(oledPreference: oledPreference, colorScheme: colorScheme),
+                for: .navigationBar
+            )
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        onCancel()
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -367,7 +581,18 @@ private struct ScreenBorderShape: Shape {
 
 private struct RestTimerScreenBorderOverlay: View {
     let visual: RestTimerVisual
+    let oledPreference: Bool
+    let colorScheme: ColorScheme
     let onSkip: () -> Void
+    let onAdjust: (Int) -> Void
+
+    private var oledCanvas: Bool {
+        LoggyTheme.isOLEDDarkCanvas(oledPreference: oledPreference, colorScheme: colorScheme)
+    }
+
+    private var chipFill: AnyShapeStyle {
+        oledCanvas ? AnyShapeStyle(Color(white: 0.12)) : AnyShapeStyle(.thinMaterial)
+    }
 
     var body: some View {
         // Timestamp-driven: progress = remaining / total so the trimmed arc shrinks toward rest end (countdown from notch start).
@@ -403,8 +628,10 @@ private struct RestTimerScreenBorderOverlay: View {
                             .padding(.trailing, -safeArea.trailing)
                             .animation(.linear(duration: 0.05), value: progress)
                     }
+                    .allowsHitTesting(false)
                 }
                 .ignoresSafeArea()
+                .allowsHitTesting(false)
 
                 VStack {
                     Spacer()
@@ -413,23 +640,54 @@ private struct RestTimerScreenBorderOverlay: View {
                         .monospacedDigit()
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(
+                            oledCanvas
+                                ? AnyShapeStyle(Color(white: 0.12))
+                                : AnyShapeStyle(.ultraThinMaterial),
+                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        )
                     Spacer()
                 }
+                .allowsHitTesting(false)
             }
-            .allowsHitTesting(false)
-        }
-        .allowsHitTesting(false)
-        .overlay(alignment: .topTrailing) {
-            Button(action: onSkip) {
-                Text("Skip rest")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(.thinMaterial, in: Capsule())
+            .overlay(alignment: .bottom) {
+                HStack(spacing: 12) {
+                    Button {
+                        onAdjust(-15)
+                    } label: {
+                        Text("−15s")
+                            .font(.subheadline.weight(.semibold))
+                            .monospacedDigit()
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(chipFill, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onSkip) {
+                        Text("Skip")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 10)
+                            .background(chipFill, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        onAdjust(15)
+                    } label: {
+                        Text("+15s")
+                            .font(.subheadline.weight(.semibold))
+                            .monospacedDigit()
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(chipFill, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 28)
             }
-            .padding(.trailing, 20)
-            .padding(.top, 12)
         }
     }
 }
@@ -438,6 +696,8 @@ private struct SetRow: View {
     let mode: ExerciseMode
     let set: SetRowModel
     let canMutate: Bool
+    let oledPreference: Bool
+    let colorScheme: ColorScheme
     let onChange: (Double?, Int?, Double?, Int?, Double?) -> Void
     let onComplete: () -> Void
 
@@ -477,11 +737,11 @@ private struct SetRow: View {
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color(.systemBackground))
+                .fill(LoggyTheme.setRowSurface(oledPreference: oledPreference, colorScheme: colorScheme))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 1)
+                .strokeBorder(LoggyTheme.setRowStroke(oledPreference: oledPreference, colorScheme: colorScheme), lineWidth: 1)
         )
         .onAppear { syncFromSet(set) }
         .onChange(of: set) { _, new in

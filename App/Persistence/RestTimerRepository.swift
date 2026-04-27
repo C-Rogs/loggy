@@ -43,8 +43,52 @@ public final class RestTimerRepository: RestTimerRepositoryProtocol {
                     UPDATE rest_timer_state
                     SET state = 'skipped', updated_at = ?, last_action_at = ?
                     WHERE id = ?
-                """,
+                    """,
                 arguments: [now, now, timerId]
+            )
+        }
+    }
+
+    public func adjustRunningTimer(sessionId: String, deltaSeconds: Int) throws {
+        guard deltaSeconds != 0 else { return }
+        let now = ISO8601UTC.string(from: Date())
+        try pool.write { db in
+            guard let row = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT id, ends_at, user_adjusted_seconds
+                    FROM rest_timer_state
+                    WHERE workout_session_id = ? AND state = 'running'
+                    ORDER BY last_action_at DESC
+                    LIMIT 1
+                    """,
+                arguments: [sessionId]
+            ) else { return }
+
+            let timerId: String = row["id"]
+            let endsStr: String? = row["ends_at"]
+            let priorAdjust: Int = row["user_adjusted_seconds"] ?? 0
+            guard let endsStr, let endsAt = ISO8601UTC.date(from: endsStr) else { return }
+
+            let proposed = endsAt.addingTimeInterval(TimeInterval(deltaSeconds))
+            let floor = Date().addingTimeInterval(1)
+            let newEnds = proposed > floor ? proposed : floor
+            let newEndsStr = ISO8601UTC.string(from: newEnds)
+
+            try db.execute(
+                sql: """
+                    UPDATE rest_timer_state
+                    SET ends_at = ?, user_adjusted_seconds = ?, updated_at = ?, last_action_at = ?
+                    WHERE id = ?
+                    """,
+                arguments: [newEndsStr, priorAdjust + deltaSeconds, now, now, timerId]
+            )
+            try db.execute(
+                sql: """
+                    INSERT INTO rest_timer_event (id, rest_timer_state_id, event_type, timestamp, delta_seconds, source, note)
+                    VALUES (?, ?, 'adjusted', ?, ?, 'manual', NULL)
+                    """,
+                arguments: [UUID().uuidString, timerId, now, deltaSeconds]
             )
         }
     }

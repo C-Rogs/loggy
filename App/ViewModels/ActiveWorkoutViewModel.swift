@@ -35,6 +35,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
     @Published private(set) var elapsedSeconds: Int = 0
     @Published private(set) var totalVolume: Double = 0
     @Published private(set) var completedSetCount: Int = 0
+    @Published private(set) var totalRepCount: Int = 0
     @Published private(set) var restRemaining: Int?
     @Published private(set) var restTimerVisual: RestTimerVisual?
     @Published private(set) var suggestedNextExercise: ExerciseSummary?
@@ -90,12 +91,22 @@ final class ActiveWorkoutViewModel: ObservableObject {
             if let totals = try env.database.pool.read({ db in
                 try Row.fetchOne(
                     db,
-                    sql: "SELECT total_volume_kg_cache, total_set_count_cache FROM workout_session WHERE id = ?",
+                    sql: """
+                        SELECT total_volume_kg_cache, total_set_count_cache, total_rep_count_cache
+                        FROM workout_session WHERE id = ?
+                        """,
                     arguments: [sessionId]
                 )
             }) {
                 totalVolume = totals["total_volume_kg_cache"]
                 completedSetCount = totals["total_set_count_cache"]
+                if let n = totals["total_rep_count_cache"] as? Int64 {
+                    totalRepCount = Int(n)
+                } else if let n = totals["total_rep_count_cache"] as? Int {
+                    totalRepCount = n
+                } else {
+                    totalRepCount = 0
+                }
             }
 
             refreshRest()
@@ -238,6 +249,27 @@ final class ActiveWorkoutViewModel: ObservableObject {
         guard let snap = try? env.restTimers.activeTimer(for: sessionId) else { return }
         try? env.restTimers.skipTimer(timerId: snap.id)
         refreshRest()
+        Task { @MainActor in await pushLiveActivity() }
+    }
+
+    func adjustRestTimer(by deltaSeconds: Int) {
+        try? env.restTimers.adjustRunningTimer(sessionId: sessionId, deltaSeconds: deltaSeconds)
+        reload()
+    }
+
+    func moveExercise(fromIndex: Int, direction: Int) {
+        var ids = exercises.map(\.id)
+        let j = fromIndex + direction
+        guard ids.indices.contains(fromIndex), ids.indices.contains(j) else { return }
+        ids.swapAt(fromIndex, j)
+        try? env.workouts.reorderExercises(sessionId: sessionId, orderedExerciseRowIds: ids)
+        reload()
+        Task { @MainActor in await pushLiveActivity() }
+    }
+
+    func removeSessionExercise(sessionExerciseId: String) {
+        try? env.workouts.removeSessionExercise(sessionId: sessionId, sessionExerciseId: sessionExerciseId)
+        reload()
         Task { @MainActor in await pushLiveActivity() }
     }
 

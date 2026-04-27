@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C508E5F18F664A1EAF8DAB11 /* AppleHealthWorkoutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3408B66DB3D74F06B90E60166 /* AppleHealthWorkoutService.swift */; };
+		E7E8E9E0A1A2A3A4B5B6B7B8 /* LoggyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E8E9E0A1A2A3A4B5B6B7B9 /* LoggyTheme.swift */; };
 		03354685817CE88702548CBD /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C530CA74B48627DBAF34FEC3 /* WorkoutActivityAttributes.swift */; };
 		05505B65F1E59BA3F78E8E0C /* PRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD1F15627EAD106080770F4 /* PRService.swift */; };
 		09E5575828E741C80EB899BC /* TemplateRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6320FEEDC3624EF5571AFBD3 /* TemplateRepository.swift */; };
@@ -42,6 +42,8 @@
 		BF4E5AD06D7664B1AB19A0BF /* RestTimerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB36AA4EE8BD568F3021D318 /* RestTimerService.swift */; };
 		C250DFDE5AEED48AB3396909 /* ImportBatchRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3445E5AEF3E764E52D74CA09 /* ImportBatchRepository.swift */; };
 		C4C5290FA724C99828BD9F37 /* CoachRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCFB339A0B4DFDEC82EB74C3 /* CoachRepository.swift */; };
+		C508E5F18F664A1EAF8DAB11 /* AppleHealthWorkoutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3408B66DB3D74F06B90E60166 /* AppleHealthWorkoutService.swift */; };
+		C5D4E3F2109876543210FEDC /* 04_DATABASE_SCHEMA.sql in Resources */ = {isa = PBXBuildFile; fileRef = A1E2B3C48D5F60718293A4B5C6 /* 04_DATABASE_SCHEMA.sql */; };
 		C5E51B19C93C0B8545E805E7 /* ExerciseDirectoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C2477CA2EF689CA32E59CCF /* ExerciseDirectoryViewModel.swift */; };
 		CC227FB893CDE1E89C2FD92F /* SessionRecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 206CFCBAA4FACA56FD8C50FD /* SessionRecoveryView.swift */; };
 		E1AF124EAE4FB2AF1211DBCD /* LoggyLiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B38DAB08ADF418B6D513B1 /* LoggyLiveActivityBundle.swift */; };
@@ -49,7 +51,6 @@
 		F0C4839F379D79BA156FA5FE /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74A54B83D7B564749B574822 /* AppDatabase.swift */; };
 		F2D67D3A8B5E8157FCB55E0A /* DomainEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 912CE9B0C18FA1DCF412F647 /* DomainEnums.swift */; };
 		F50BCE9B3DC1BE5644BFBAA6 /* SeedDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAE7A6E415DA3FB73424FC6 /* SeedDatabase.swift */; };
-		C5D4E3F2109876543210FEDC /* 04_DATABASE_SCHEMA.sql in Resources */ = {isa = PBXBuildFile; fileRef = A1E2B3C48D5F60718293A4B5C6 /* 04_DATABASE_SCHEMA.sql */; };
 		F90111223344556677889A01 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889901 /* DesignTokens.swift */; };
 		F90111223344556677889A02 /* SessionCoachService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889902 /* SessionCoachService.swift */; };
 		F90111223344556677889A03 /* NextExerciseSuggestionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889903 /* NextExerciseSuggestionService.swift */; };
@@ -83,8 +84,6 @@
 
 /* Begin PBXFileReference section */
 		0212F6493EEBD8122B8EB1DC /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
-		BE7161FE72E944209590636B /* Loggy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Resources/Loggy.entitlements; sourceTree = "<group>"; };
-		3408B66DB3D74F06B90E60166 /* AppleHealthWorkoutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHealthWorkoutService.swift; sourceTree = "<group>"; };
 		1AD1F15627EAD106080770F4 /* PRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRService.swift; sourceTree = "<group>"; };
 		1FC2912D583912D3E4E49D0A /* TemplatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatesViewModel.swift; sourceTree = "<group>"; };
 		206CFCBAA4FACA56FD8C50FD /* SessionRecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecoveryView.swift; sourceTree = "<group>"; };
@@ -95,6 +94,7 @@
 		296F43BDFA283999B19C4E69 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		333ADC212FD683F252AD2A7F /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		33EB2CA7C2EA50ACC4C4FC3C /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		3408B66DB3D74F06B90E60166 /* AppleHealthWorkoutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHealthWorkoutService.swift; sourceTree = "<group>"; };
 		3445E5AEF3E764E52D74CA09 /* ImportBatchRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportBatchRepository.swift; sourceTree = "<group>"; };
 		36BF2C65A011413DCAD0E1AF /* WorkoutCalculationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCalculationService.swift; sourceTree = "<group>"; };
 		3C2477CA2EF689CA32E59CCF /* ExerciseDirectoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDirectoryViewModel.swift; sourceTree = "<group>"; };
@@ -116,10 +116,12 @@
 		944F9B0855322F2855239262 /* WorkoutTotalsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTotalsService.swift; sourceTree = "<group>"; };
 		989BBD37B43E46D371C627DB /* RestTimerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerRepository.swift; sourceTree = "<group>"; };
 		9FAE7A6E415DA3FB73424FC6 /* SeedDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedDatabase.swift; sourceTree = "<group>"; };
+		A1E2B3C48D5F60718293A4B5C6 /* 04_DATABASE_SCHEMA.sql */ = {isa = PBXFileReference; lastKnownFileType = text; path = 04_DATABASE_SCHEMA.sql; sourceTree = "<group>"; };
 		AB36AA4EE8BD568F3021D318 /* RestTimerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerService.swift; sourceTree = "<group>"; };
 		ABDB2FCFFF14673D206872EC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B7CE47489DF4E0B2579C554A /* LoggyLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LoggyLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B8E350E439FB9F46552EFF9E /* ExerciseDirectoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDirectoryView.swift; sourceTree = "<group>"; };
+		BE7161FE72E944209590636B /* Resources/Loggy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Resources/Loggy.entitlements; sourceTree = "<group>"; };
 		C275C608D866005D61CDD48D /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		C530CA74B48627DBAF34FEC3 /* WorkoutActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActivityAttributes.swift; sourceTree = "<group>"; };
 		C77A74607E4DF6D86AB5768E /* TemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatesView.swift; sourceTree = "<group>"; };
@@ -128,15 +130,15 @@
 		CE3C78051DE035718604D0C2 /* RepositoryProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryProtocols.swift; sourceTree = "<group>"; };
 		D07ACE23CE77DE657AB49CEA /* WorkoutSessionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionRepository.swift; sourceTree = "<group>"; };
 		E2B258203A488C9EDBEA4AE0 /* WorkoutLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivityWidget.swift; sourceTree = "<group>"; };
+		E7E8E9E0A1A2A3A4B5B6B7B9 /* LoggyTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyTheme.swift; sourceTree = "<group>"; };
 		F34B157E7EDE60A2A7522AF8 /* LoggyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyApp.swift; sourceTree = "<group>"; };
 		F4F879CFA6BEEDB7F088BE38 /* ExercisePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePickerSheet.swift; sourceTree = "<group>"; };
-		FBB18EF63CAA9E3D76CC0273 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		F90111223344556677889901 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		F90111223344556677889902 /* SessionCoachService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCoachService.swift; sourceTree = "<group>"; };
 		F90111223344556677889903 /* NextExerciseSuggestionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextExerciseSuggestionService.swift; sourceTree = "<group>"; };
 		F90111223344556677889904 /* LoggyCSVExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyCSVExporter.swift; sourceTree = "<group>"; };
 		F90111223344556677889905 /* ExerciseDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDetailViews.swift; sourceTree = "<group>"; };
-		A1E2B3C48D5F60718293A4B5C6 /* 04_DATABASE_SCHEMA.sql */ = {isa = PBXFileReference; lastKnownFileType = text; path = 04_DATABASE_SCHEMA.sql; sourceTree = "<group>"; };
+		FBB18EF63CAA9E3D76CC0273 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -150,22 +152,11 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
-/* Begin PBXResourcesBuildPhase section */
-		B4A392817465534241302918 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				C5D4E3F2109876543210FEDC /* 04_DATABASE_SCHEMA.sql in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin PBXGroup section */
 		01AB1096C704F33BA5D674D5 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				BE7161FE72E944209590636B /* Loggy.entitlements */,
+				BE7161FE72E944209590636B /* Resources/Loggy.entitlements */,
 				296F43BDFA283999B19C4E69 /* AppEnvironment.swift */,
 				F34B157E7EDE60A2A7522AF8 /* LoggyApp.swift */,
 				0891D5FE2E7EFEE56358F18E /* Domain */,
@@ -227,6 +218,7 @@
 			isa = PBXGroup;
 			children = (
 				F90111223344556677889901 /* DesignTokens.swift */,
+				E7E8E9E0A1A2A3A4B5B6B7B9 /* LoggyTheme.swift */,
 				C530CA74B48627DBAF34FEC3 /* WorkoutActivityAttributes.swift */,
 			);
 			path = Shared;
@@ -385,6 +377,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		B4A392817465534241302918 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C5D4E3F2109876543210FEDC /* 04_DATABASE_SCHEMA.sql in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		32DC07D084BF6D91DBE9D5A7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -437,6 +440,7 @@
 				09E5575828E741C80EB899BC /* TemplateRepository.swift in Sources */,
 				6021E8F742245B9DC56923A7 /* TemplatesView.swift in Sources */,
 				9EAA35D8EF3B875AC24F6115 /* TemplatesViewModel.swift in Sources */,
+				E7E8E9E0A1A2A3A4B5B6B7B8 /* LoggyTheme.swift in Sources */,
 				9FACE112ABAF4D963C9E7DA1 /* WorkoutActivityAttributes.swift in Sources */,
 				A80465D16160B83F33B1895B /* WorkoutCalculationService.swift in Sources */,
 				3D55BAB6E03AC407536673C5 /* WorkoutSessionRepository.swift in Sources */,

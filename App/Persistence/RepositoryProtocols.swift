@@ -17,6 +17,7 @@ public protocol WorkoutSessionRepositoryProtocol: Sendable {
     func startSessionFromTemplate(templateId: String, title: String?) throws -> String
     func sessionExercises(sessionId: String) throws -> [SessionExerciseCard]
     func addExercise(sessionId: String, exerciseId: String) throws
+    func removeSessionExercise(sessionId: String, sessionExerciseId: String) throws
     func reorderExercises(sessionId: String, orderedExerciseRowIds: [String]) throws
     func addSet(sessionExerciseId: String, cloneFromSetId: String?) throws
     func updateSet(
@@ -48,6 +49,8 @@ public protocol WorkoutSessionRepositoryProtocol: Sendable {
 public protocol RestTimerRepositoryProtocol: Sendable {
     func activeTimer(for sessionId: String) throws -> RestTimerSnapshot?
     func skipTimer(timerId: String) throws
+    /// Shifts the running timer’s `ends_at` by `deltaSeconds` (negative shortens rest). No-op if none running.
+    func adjustRunningTimer(sessionId: String, deltaSeconds: Int) throws
 }
 
 public struct RestTimerSnapshot: Hashable, Sendable {

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct TemplatesView: View {
     @EnvironmentObject private var env: AppEnvironment
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
     @StateObject private var vm = TemplatesViewModel()
 
     @State private var newName: String = ""
@@ -35,13 +37,22 @@ struct TemplatesView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
         .navigationTitle("Templates")
+        .toolbarBackground(
+            LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+            for: .navigationBar
+        )
+        .toolbarBackground(.visible, for: .navigationBar)
         .task { try? vm.refresh(env: env) }
     }
 }
 
 private struct TemplateDetailView: View {
     @EnvironmentObject private var env: AppEnvironment
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
     @StateObject private var vm = TemplatesViewModel()
 
     let templateId: String
@@ -64,7 +75,14 @@ private struct TemplateDetailView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
         .navigationTitle("Template")
+        .toolbarBackground(
+            LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+            for: .navigationBar
+        )
+        .toolbarBackground(.visible, for: .navigationBar)
         .sheet(isPresented: $showPicker) {
             ExercisePickerSheet { exerciseId in
                 try? vm.addExercise(templateId: templateId, exerciseId: exerciseId, env: env)

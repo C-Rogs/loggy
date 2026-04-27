@@ -22,6 +22,12 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Loggy reads heart rate from Apple Health so it can show your current BPM during a workout when your Apple Watch or other accessories record it.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Loggy saves completed strength workouts and estimated active energy to Apple Health so they can count toward your Activity rings and Fitness summaries.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -33,11 +39,5 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
-	<key>NSHealthShareUsageDescription</key>
-	<string>Loggy reads heart rate from Apple Health so it can show your current BPM during a workout when your Apple Watch or other accessories record it.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>Loggy saves completed strength workouts and estimated active energy to Apple Health so they can count toward your Activity rings and Fitness summaries.</string>
 </dict>
 </plist>

@@ -3,6 +3,8 @@ import SwiftUI
 struct ExercisePickerSheet: View {
     @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
 
     @StateObject private var vm = ExerciseDirectoryViewModel()
     @State private var selectedIds: Set<String> = []
@@ -24,40 +26,58 @@ struct ExercisePickerSheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                switch mode {
-                case .single:
-                    List(vm.exercises) { ex in
-                        Button(ex.displayName) {
-                            if case let .single(onPick) = mode {
-                                onPick(ex.id)
-                                dismiss()
+            VStack(spacing: 0) {
+                Picker("Type", selection: $vm.modeFilter) {
+                    ForEach(ExercisePickerModeFilter.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+
+                Group {
+                    switch mode {
+                    case .single:
+                        List(vm.exercises) { ex in
+                            Button(ex.displayName) {
+                                if case let .single(onPick) = mode {
+                                    onPick(ex.id)
+                                    dismiss()
+                                }
                             }
                         }
-                    }
-                case .multi:
-                    List(vm.exercises) { ex in
-                        let isOn = selectedIds.contains(ex.id)
-                        HStack(spacing: 12) {
-                            Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(isOn ? Color.accentColor : .secondary)
-                            Text(ex.displayName)
-                                .foregroundStyle(.primary)
-                            Spacer(minLength: 0)
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if selectedIds.contains(ex.id) {
-                                selectedIds.remove(ex.id)
-                            } else {
-                                selectedIds.insert(ex.id)
+                    case .multi:
+                        List(vm.exercises) { ex in
+                            let isOn = selectedIds.contains(ex.id)
+                            HStack(spacing: 12) {
+                                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(isOn ? Color.accentColor : .secondary)
+                                Text(ex.displayName)
+                                    .foregroundStyle(.primary)
+                                Spacer(minLength: 0)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if selectedIds.contains(ex.id) {
+                                    selectedIds.remove(ex.id)
+                                } else {
+                                    selectedIds.insert(ex.id)
+                                }
                             }
                         }
                     }
                 }
+                .scrollContentBackground(.hidden)
+                .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
             }
             .searchable(text: $vm.query)
             .navigationTitle(modeTitle)
+            .toolbarBackground(
+                LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+                for: .navigationBar
+            )
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
@@ -76,6 +96,9 @@ struct ExercisePickerSheet: View {
             }
             .task { try? vm.refresh(env: env) }
             .onChange(of: vm.query) { _, _ in
+                try? vm.refresh(env: env)
+            }
+            .onChange(of: vm.modeFilter) { _, _ in
                 try? vm.refresh(env: env)
             }
         }

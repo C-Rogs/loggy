@@ -3,6 +3,8 @@ import SwiftUI
 
 struct ExerciseHowToSheet: View {
     @EnvironmentObject private var env: AppEnvironment
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
     let exerciseId: String
 
     @State private var info: ExerciseHowToInfo?
@@ -48,9 +50,14 @@ struct ExerciseHowToSheet: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
             .navigationTitle(info?.displayName ?? "Exercise")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(
+                LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+                for: .navigationBar
+            )
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
@@ -67,6 +74,8 @@ struct ExerciseHowToSheet: View {
 
 struct ExerciseAnalyticsView: View {
     @EnvironmentObject private var env: AppEnvironment
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
     let exerciseId: String
 
     @State private var points: [ExerciseWeeklyStatPoint] = []
@@ -113,8 +122,16 @@ struct ExerciseAnalyticsView: View {
                 }
             }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(
+            LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+            for: .navigationBar
+        )
+        .toolbarBackground(.visible, for: .navigationBar)
         .task {
             points = (try? env.workouts.weeklyStatsForExercise(exerciseId: exerciseId, limitWeeks: 17)) ?? []
             if let info = try? env.exercises.exerciseHowTo(exerciseId: exerciseId) {

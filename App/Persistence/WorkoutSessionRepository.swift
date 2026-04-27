@@ -255,6 +255,59 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
         }
     }
 
+    public func removeSessionExercise(sessionId: String, sessionExerciseId: String) throws {
+        let now = ISO8601UTC.string(from: Date())
+        try pool.write { db in
+            guard try String.fetchOne(
+                db,
+                sql: """
+                    SELECT id FROM workout_session_exercise
+                    WHERE id = ? AND workout_session_id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [sessionExerciseId, sessionId]
+            ) != nil else { return }
+
+            try db.execute(
+                sql: """
+                    UPDATE rest_timer_state
+                    SET state = 'skipped', updated_at = ?, last_action_at = ?
+                    WHERE workout_session_id = ? AND workout_session_exercise_id = ?
+                      AND state IN ('running','paused')
+                    """,
+                arguments: [now, now, sessionId, sessionExerciseId]
+            )
+
+            try db.execute(
+                sql: "UPDATE set_entry SET deleted_at = ? WHERE workout_session_exercise_id = ? AND deleted_at IS NULL",
+                arguments: [now, sessionExerciseId]
+            )
+            try db.execute(
+                sql: "UPDATE workout_session_exercise SET deleted_at = ? WHERE id = ?",
+                arguments: [now, sessionExerciseId]
+            )
+
+            let remaining = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id FROM workout_session_exercise
+                    WHERE workout_session_id = ? AND deleted_at IS NULL
+                    ORDER BY display_order ASC, created_at ASC
+                    """,
+                arguments: [sessionId]
+            )
+            for (idx, r) in remaining.enumerated() {
+                let id: String = r["id"]
+                try db.execute(
+                    sql: "UPDATE workout_session_exercise SET display_order = ?, updated_at = ? WHERE id = ?",
+                    arguments: [idx, now, id]
+                )
+            }
+
+            try ActiveWorkoutStateRepository.touch(db: db, sessionId: sessionId, now: now)
+        }
+        try WorkoutTotalsService().recomputeCaches(pool: pool, sessionId: sessionId)
+    }
+
     public func reorderExercises(sessionId: String, orderedExerciseRowIds: [String]) throws {
         let now = ISO8601UTC.string(from: Date())
         try pool.write { db in

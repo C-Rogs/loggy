@@ -3,6 +3,8 @@ import SwiftUI
 struct SessionRecoveryView: View {
     @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
 
     let sessionId: String
     let onDone: () -> Void
@@ -47,7 +49,9 @@ struct SessionRecoveryView: View {
 
                 Spacer()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(20)
+            .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
             .navigationTitle("Recover workout")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -57,6 +61,11 @@ struct SessionRecoveryView: View {
                     }
                 }
             }
+            .toolbarBackground(
+                LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+                for: .navigationBar
+            )
+            .toolbarBackground(.visible, for: .navigationBar)
         }
     }
 }

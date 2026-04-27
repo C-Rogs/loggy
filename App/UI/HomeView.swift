@@ -7,6 +7,9 @@ struct HomeView: View {
     @EnvironmentObject private var appleHealth: AppleHealthWorkoutService
     @ObservedObject var home: HomeViewModel
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
+
     @AppStorage("loggyAppearance") private var appearanceRaw: String = AppAppearance.system.rawValue
 
     @State private var path: [HomeRoute] = []
@@ -110,7 +113,7 @@ struct HomeView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color(.systemGroupedBackground))
+            .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
             .navigationTitle("Loggy")
             .navigationDestination(for: HomeRoute.self) { route in
                 switch route {
@@ -138,6 +141,11 @@ struct HomeView: View {
                 }
             }
             .preferredColorScheme(appearance.colorScheme)
+            .toolbarBackground(
+                LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+                for: .navigationBar
+            )
+            .toolbarBackground(.visible, for: .navigationBar)
             .sheet(isPresented: $home.showRecovery) {
                 if let active = home.activeSummary {
                     SessionRecoveryView(sessionId: active.sessionId) {
@@ -182,6 +190,8 @@ struct HomeView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
                     .navigationTitle("Settings")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -189,7 +199,13 @@ struct HomeView: View {
                             Button("Done") { showSettings = false }
                         }
                     }
+                    .toolbarBackground(
+                        LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+                        for: .navigationBar
+                    )
+                    .toolbarBackground(.visible, for: .navigationBar)
                 }
+                .environment(\.loggyOLEDDarkUserPreference, loggyOLEDDark)
             }
             .sheet(isPresented: $showCoachStart) {
                 NavigationStack {
@@ -207,6 +223,8 @@ struct HomeView: View {
                             .fontWeight(.semibold)
                         }
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
                     .navigationTitle("Coach")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -214,7 +232,13 @@ struct HomeView: View {
                             Button("Cancel") { showCoachStart = false }
                         }
                     }
+                    .toolbarBackground(
+                        LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+                        for: .navigationBar
+                    )
+                    .toolbarBackground(.visible, for: .navigationBar)
                 }
+                .environment(\.loggyOLEDDarkUserPreference, loggyOLEDDark)
             }
             .fileImporter(isPresented: $showImporter, allowedContentTypes: [.commaSeparatedText]) { result in
                 switch result {
