@@ -54,3 +54,4 @@ Build a single-user iPhone-first workout logging app that closely mirrors Hevy's
 - Prefer creating real source files over giant speculative docs.
 - Keep files readable and modular.
 - When schema changes, update docs and code together.
+- After each logical code change: **commit** with a focused message (easy to revert), then **build** the Loggy scheme for the iPhone Simulator and **install + launch** the app on the booted simulator (verify it runs). Use `xcodebuild` plus `xcrun simctl` install/launch with bundle id `com.loggy.app` when automation is needed.
