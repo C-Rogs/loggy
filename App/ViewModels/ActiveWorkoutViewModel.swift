@@ -38,6 +38,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
     @Published private(set) var restRemaining: Int?
     @Published private(set) var restTimerVisual: RestTimerVisual?
     @Published private(set) var suggestedNextExercise: ExerciseSummary?
+    @Published private(set) var sessionStartedAt: Date?
 
     private var tick: AnyCancellable?
 
@@ -80,7 +81,10 @@ final class ActiveWorkoutViewModel: ObservableObject {
                 try String.fetchOne(db, sql: "SELECT started_at FROM workout_session WHERE id = ?", arguments: [sessionId])
             }
             if let started, let d = ISO8601UTC.date(from: started) {
+                sessionStartedAt = d
                 elapsedSeconds = max(0, Int(Date().timeIntervalSince(d)))
+            } else {
+                sessionStartedAt = nil
             }
 
             if let totals = try env.database.pool.read({ db in
@@ -114,6 +118,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
                 try? env.workouts.syncActiveWorkoutFocus(sessionId: sessionId, sessionExerciseId: nil, setEntryId: nil)
             }
         } catch {
+            sessionStartedAt = nil
             // keep UI stable on read errors
         }
     }
@@ -214,13 +219,17 @@ final class ActiveWorkoutViewModel: ObservableObject {
     func finish() {
         do {
             try env.workouts.finishSession(sessionId: sessionId)
-            Task { @MainActor in await env.liveActivity.end() }
+            Task { @MainActor in
+                await env.appleHealth.onWorkoutFinished(sessionId: sessionId)
+                await env.liveActivity.end()
+            }
         } catch {
             // ignore
         }
     }
 
     func discard() {
+        env.appleHealth.onWorkoutDiscarded(sessionId: sessionId)
         try? env.workouts.discardSession(sessionId: sessionId)
         Task { @MainActor in await env.liveActivity.end() }
     }

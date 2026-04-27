@@ -7,6 +7,7 @@ private struct ExerciseHowToTarget: Identifiable, Hashable {
 
 struct ActiveWorkoutView: View {
     @EnvironmentObject private var env: AppEnvironment
+    @EnvironmentObject private var appleHealth: AppleHealthWorkoutService
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var vm: ActiveWorkoutViewModel
@@ -90,8 +91,16 @@ struct ActiveWorkoutView: View {
                 }
             }
         }
-        .onAppear { vm.onAppear() }
-        .onDisappear { vm.onDisappear() }
+        .onAppear {
+            vm.onAppear()
+            if vm.sessionStatus == .active, let start = vm.sessionStartedAt {
+                appleHealth.activeWorkoutScreenAppeared(sessionId: vm.sessionId, sessionStartedAt: start)
+            }
+        }
+        .onDisappear {
+            vm.onDisappear()
+            appleHealth.activeWorkoutScreenDisappeared()
+        }
         .sheet(isPresented: $showExercisePicker) {
             ExercisePickerSheet(onPickMany: { ids in
                 vm.addExercises(exerciseIds: ids)
@@ -166,6 +175,13 @@ struct ActiveWorkoutView: View {
                 Text(formatClock(vm.elapsedSeconds)).font(.headline).monospacedDigit()
             }
             Spacer()
+            if appleHealth.syncWorkoutsToHealthEnabled, let bpm = appleHealth.latestHeartRateBpm {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Heart").font(.caption).foregroundStyle(.secondary)
+                    Text("\(bpm)").font(.headline).monospacedDigit()
+                }
+                Spacer()
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Volume").font(.caption).foregroundStyle(.secondary)
                 Text("\(Int(vm.totalVolume)) kg").font(.headline)

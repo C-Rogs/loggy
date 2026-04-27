@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct HomeView: View {
     @EnvironmentObject private var env: AppEnvironment
+    @EnvironmentObject private var appleHealth: AppleHealthWorkoutService
     @ObservedObject var home: HomeViewModel
 
     @AppStorage("loggyAppearance") private var appearanceRaw: String = AppAppearance.system.rawValue
@@ -156,6 +157,18 @@ struct HomeView: View {
                                 }
                             }
                             .pickerStyle(.inline)
+                        }
+                        Section("Apple Health") {
+                            Toggle("Save workouts to Health", isOn: Binding(
+                                get: { appleHealth.syncWorkoutsToHealthEnabled },
+                                set: { appleHealth.setSyncWorkoutsToHealthEnabled($0) }
+                            ))
+                            Button("Allow Health access…") {
+                                Task { await appleHealth.requestAuthorization() }
+                            }
+                            Text("Saves strength-training workouts plus a rough active-energy estimate for Activity rings. BPM shows when Health has samples (usually from Apple Watch). Fitness Training Load is computed by Apple from your Health data, not inside Loggy.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                         Section("Data") {
                             Button("Import Hevy CSV…") { showImporter = true }

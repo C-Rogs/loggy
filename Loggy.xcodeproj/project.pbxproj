@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C508E5F18F664A1EAF8DAB11 /* AppleHealthWorkoutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3408B66DB3D74F06B90E60166 /* AppleHealthWorkoutService.swift */; };
 		03354685817CE88702548CBD /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C530CA74B48627DBAF34FEC3 /* WorkoutActivityAttributes.swift */; };
 		05505B65F1E59BA3F78E8E0C /* PRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD1F15627EAD106080770F4 /* PRService.swift */; };
 		09E5575828E741C80EB899BC /* TemplateRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6320FEEDC3624EF5571AFBD3 /* TemplateRepository.swift */; };
@@ -82,6 +83,8 @@
 
 /* Begin PBXFileReference section */
 		0212F6493EEBD8122B8EB1DC /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
+		BE7161FE72E944209590636B /* Loggy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Resources/Loggy.entitlements; sourceTree = "<group>"; };
+		3408B66DB3D74F06B90E60166 /* AppleHealthWorkoutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHealthWorkoutService.swift; sourceTree = "<group>"; };
 		1AD1F15627EAD106080770F4 /* PRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRService.swift; sourceTree = "<group>"; };
 		1FC2912D583912D3E4E49D0A /* TemplatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatesViewModel.swift; sourceTree = "<group>"; };
 		206CFCBAA4FACA56FD8C50FD /* SessionRecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecoveryView.swift; sourceTree = "<group>"; };
@@ -162,6 +165,7 @@
 		01AB1096C704F33BA5D674D5 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				BE7161FE72E944209590636B /* Loggy.entitlements */,
 				296F43BDFA283999B19C4E69 /* AppEnvironment.swift */,
 				F34B157E7EDE60A2A7522AF8 /* LoggyApp.swift */,
 				0891D5FE2E7EFEE56358F18E /* Domain */,
@@ -257,6 +261,7 @@
 				9FAE7A6E415DA3FB73424FC6 /* SeedDatabase.swift */,
 				36BF2C65A011413DCAD0E1AF /* WorkoutCalculationService.swift */,
 				944F9B0855322F2855239262 /* WorkoutTotalsService.swift */,
+				3408B66DB3D74F06B90E60166 /* AppleHealthWorkoutService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -436,6 +441,7 @@
 				A80465D16160B83F33B1895B /* WorkoutCalculationService.swift in Sources */,
 				3D55BAB6E03AC407536673C5 /* WorkoutSessionRepository.swift in Sources */,
 				4BA9EF357B233FE21C4F0135 /* WorkoutTotalsService.swift in Sources */,
+				C508E5F18F664A1EAF8DAB11 /* AppleHealthWorkoutService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -609,6 +615,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/Resources/Loggy.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -629,6 +636,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/Resources/Loggy.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				GENERATE_INFOPLIST_FILE = NO;

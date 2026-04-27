@@ -27,13 +27,17 @@ struct SessionRecoveryView: View {
 
                     Button("Finish now") {
                         try? env.workouts.finishSession(sessionId: sessionId)
-                        Task { @MainActor in await env.liveActivity.end() }
+                        Task { @MainActor in
+                            await env.appleHealth.onWorkoutFinished(sessionId: sessionId)
+                            await env.liveActivity.end()
+                        }
                         onDone()
                         dismiss()
                     }
                     .buttonStyle(.bordered)
 
                     Button("Discard", role: .destructive) {
+                        env.appleHealth.onWorkoutDiscarded(sessionId: sessionId)
                         try? env.workouts.discardSession(sessionId: sessionId)
                         Task { @MainActor in await env.liveActivity.end() }
                         onDone()

@@ -532,6 +532,23 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
         try ExerciseHistoryService().rebuildSnapshotsForSession(pool: pool, sessionId: sessionId)
     }
 
+    public func sessionHealthKitTiming(sessionId: String) throws -> (startedAt: Date, endedAt: Date?) {
+        try pool.read { db in
+            guard let row = try Row.fetchOne(
+                db,
+                sql: "SELECT started_at, ended_at FROM workout_session WHERE id = ? AND deleted_at IS NULL",
+                arguments: [sessionId]
+            ) else {
+                throw RepositoryError.notFound
+            }
+            let startedStr: String = row["started_at"]
+            let endedStr: String? = row["ended_at"]
+            let started = ISO8601UTC.date(from: startedStr) ?? Date()
+            let ended = endedStr.flatMap { ISO8601UTC.date(from: $0) }
+            return (started, ended)
+        }
+    }
+
     public func discardSession(sessionId: String) throws {
         let now = ISO8601UTC.string(from: Date())
         try pool.write { db in

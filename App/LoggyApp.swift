@@ -19,6 +19,7 @@ struct LoggyApp: App {
     }
 }
 
+@MainActor
 private final class AppEnvironmentWrapper: ObservableObject {
     @Published var value: AppEnvironment?
 

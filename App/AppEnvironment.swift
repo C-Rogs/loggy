@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 final class AppEnvironment: ObservableObject {
     let database: AppDatabase
     let workouts: WorkoutSessionRepository
@@ -15,6 +16,7 @@ final class AppEnvironment: ObservableObject {
     let nextExerciseSuggestion: NextExerciseSuggestionService
     let sessionCoach: SessionCoachService
     let csvExporter: LoggyCSVExporter
+    let appleHealth: AppleHealthWorkoutService
 
     init() throws {
         let database = try AppDatabase.openShared()
@@ -22,7 +24,9 @@ final class AppEnvironment: ObservableObject {
         self.database = database
 
         let pool = database.pool
-        self.workouts = WorkoutSessionRepository(pool: pool)
+        let workouts = WorkoutSessionRepository(pool: pool)
+        self.workouts = workouts
+        self.appleHealth = AppleHealthWorkoutService(workouts: workouts)
         self.exercises = ExerciseRepository(pool: pool)
         self.restTimers = RestTimerRepository(pool: pool)
         self.templates = TemplateRepository(pool: pool)

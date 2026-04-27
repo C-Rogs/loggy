@@ -35,6 +35,8 @@ public protocol WorkoutSessionRepositoryProtocol: Sendable {
     func updateSessionTitle(sessionId: String, title: String?) throws
     func finishSession(sessionId: String) throws
     func discardSession(sessionId: String) throws
+    /// ISO timestamps for syncing a completed session to HealthKit.
+    func sessionHealthKitTiming(sessionId: String) throws -> (startedAt: Date, endedAt: Date?)
     func markRecoveryStale(sessionId: String) throws
     func touchActiveState(sessionId: String) throws
     func loadSessionForEdit(sessionId: String) throws -> (status: WorkoutSessionStatus, title: String?)

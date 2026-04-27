@@ -6,5 +6,6 @@ struct RootView: View {
 
     var body: some View {
         HomeView(home: home)
+            .environmentObject(env.appleHealth)
     }
 }
