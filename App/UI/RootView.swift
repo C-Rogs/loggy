@@ -6,8 +6,5 @@ struct RootView: View {
 
     var body: some View {
         HomeView(home: home)
-            .task {
-                try? home.refresh(env: env)
-            }
     }
 }

@@ -587,6 +587,77 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
         }
     }
 
+    public func syncActiveWorkoutFocus(sessionId: String, sessionExerciseId: String?, setEntryId: String?) throws {
+        let now = ISO8601UTC.string(from: Date())
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE active_workout_state
+                    SET current_workout_session_exercise_id = ?,
+                        current_set_entry_id = ?,
+                        updated_at = ?
+                    WHERE workout_session_id = ?
+                """,
+                arguments: [sessionExerciseId, setEntryId, now, sessionId]
+            )
+        }
+    }
+
+    public func weeklyCompletedVolumeByWeek(limitWeeks: Int) throws -> [WeeklyVolumePoint] {
+        let days = max(7, limitWeeks * 7)
+        return try pool.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT strftime('%Y-W%W', started_at) AS wk,
+                           SUM(total_volume_kg_cache) AS vol
+                    FROM workout_session
+                    WHERE status = 'completed' AND deleted_at IS NULL
+                      AND date(started_at) >= date('now', ?)
+                    GROUP BY wk
+                    ORDER BY wk ASC
+                """,
+                arguments: ["-\(days) days"]
+            )
+            return rows.map { row in
+                WeeklyVolumePoint(weekKey: row["wk"], totalKg: row["vol"] as Double? ?? 0)
+            }
+        }
+    }
+
+    public func weeklyStatsForExercise(exerciseId: String, limitWeeks: Int) throws -> [ExerciseWeeklyStatPoint] {
+        let days = max(7, limitWeeks * 7)
+        return try pool.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT strftime('%Y-W%W', se.completed_at) AS wk,
+                           SUM(COALESCE(se.weight_kg, 0) * COALESCE(CAST(se.reps AS REAL), 0)) AS vol,
+                           MAX(se.weight_kg) AS mx
+                    FROM set_entry se
+                    JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
+                    JOIN workout_session ws ON ws.id = wse.workout_session_id
+                    WHERE wse.exercise_id = ?
+                      AND se.status = 'completed'
+                      AND se.completed_at IS NOT NULL
+                      AND se.deleted_at IS NULL AND wse.deleted_at IS NULL AND ws.deleted_at IS NULL
+                      AND ws.status = 'completed'
+                      AND date(se.completed_at) >= date('now', ?)
+                    GROUP BY wk
+                    ORDER BY wk ASC
+                """,
+                arguments: [exerciseId, "-\(days) days"]
+            )
+            return rows.map { row in
+                ExerciseWeeklyStatPoint(
+                    weekKey: row["wk"],
+                    volumeKg: row["vol"] as Double? ?? 0,
+                    maxWeightKg: row["mx"] as Double?
+                )
+            }
+        }
+    }
+
     private static func mapListItem(_ row: Row) -> WorkoutListItem? {
         guard let started = ISO8601UTC.date(from: row["started_at"]) else { return nil }
         let ended: Date? = (row["ended_at"] as String?).flatMap(ISO8601UTC.date(from:))

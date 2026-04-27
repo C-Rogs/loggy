@@ -82,6 +82,26 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
         }
     }
 
+    public func exerciseHowTo(exerciseId: String) throws -> ExerciseHowToInfo? {
+        try pool.read { db in
+            guard let row = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT id, display_name, instruction_text, gif_url
+                    FROM exercise
+                    WHERE id = ? AND deleted_at IS NULL
+                """,
+                arguments: [exerciseId]
+            ) else { return nil }
+            return ExerciseHowToInfo(
+                id: row["id"],
+                displayName: row["display_name"],
+                instructionText: row["instruction_text"],
+                gifURL: row["gif_url"]
+            )
+        }
+    }
+
     public func resolveExerciseId(importedTitle: String) throws -> String? {
         let key = importedTitle.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !key.isEmpty else { return nil }

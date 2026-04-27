@@ -54,3 +54,25 @@ public struct WorkoutTemplateSummary: Identifiable, Hashable, Sendable {
     public var name: String
     public var notes: String?
 }
+
+public struct ExerciseHowToInfo: Hashable, Sendable {
+    public var id: String
+    public var displayName: String
+    public var instructionText: String?
+    public var gifURL: String?
+}
+
+public struct WeeklyVolumePoint: Identifiable, Hashable, Sendable {
+    public var weekKey: String
+    public var totalKg: Double
+
+    public var id: String { weekKey }
+}
+
+public struct ExerciseWeeklyStatPoint: Identifiable, Hashable, Sendable {
+    public var weekKey: String
+    public var volumeKg: Double
+    public var maxWeightKg: Double?
+
+    public var id: String { weekKey }
+}

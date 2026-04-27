@@ -1,6 +1,10 @@
 import SwiftUI
 import UIKit
 
+private struct ExerciseHowToTarget: Identifiable, Hashable {
+    let id: String
+}
+
 struct ActiveWorkoutView: View {
     @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
@@ -8,31 +12,66 @@ struct ActiveWorkoutView: View {
     @StateObject private var vm: ActiveWorkoutViewModel
 
     @State private var showExercisePicker = false
+    @State private var howToTarget: ExerciseHowToTarget?
 
     init(sessionId: String, env: AppEnvironment) {
         _vm = StateObject(wrappedValue: ActiveWorkoutViewModel(sessionId: sessionId, env: env))
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            summaryStrip
+        ZStack {
+            VStack(spacing: 0) {
+                summaryStrip
 
-            if let rest = vm.restRemaining, vm.sessionStatus == .active {
-                timerStrip(rest: rest)
-            }
-
-            List {
-                Section {
-                    TextField("Workout title", text: Binding(get: { vm.sessionTitle }, set: { vm.updateSessionTitle($0) }))
-                        .disabled(vm.sessionStatus == .discarded)
+                if let rest = vm.restRemaining, vm.sessionStatus == .active {
+                    timerStrip(rest: rest)
                 }
 
-                ForEach(vm.exercises) { card in
+                List {
                     Section {
-                        exerciseHeader(card)
-                        sets(card)
+                        TextField("Workout title", text: Binding(get: { vm.sessionTitle }, set: { vm.updateSessionTitle($0) }))
+                            .disabled(vm.sessionStatus == .discarded)
+                    }
+                    .listRowBackground(Color.clear)
+
+                    ForEach(Array(vm.exercises.enumerated()), id: \.element.id) { index, card in
+                        Section {
+                            exerciseHeader(card)
+                            sets(card)
+                        } header: {
+                            EmptyView()
+                        }
+                        .listRowSeparator(.hidden, edges: .all)
+
+                        if vm.currentExerciseIndex() == index, vm.sessionStatus != .discarded {
+                            Section {
+                                addExerciseAndSuggestionBlock
+                            }
+                            .listRowBackground(Color.clear)
+                        }
+                    }
+
+                    if vm.exercises.isEmpty, vm.sessionStatus != .discarded {
+                        Section {
+                            addExerciseAndSuggestionBlock
+                        }
+                        .listRowBackground(Color.clear)
                     }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(Color(.systemGroupedBackground))
+            }
+
+            if let visual = vm.restTimerVisual,
+               vm.sessionStatus == .active,
+               vm.restRemaining != nil
+            {
+                RestTimerScreenBorderOverlay(
+                    visual: visual,
+                    onSkip: { vm.skipRest() }
+                )
+                .transition(.opacity)
             }
         }
         .navigationTitle(vm.sessionStatus == .active ? "Active workout" : "Workout")
@@ -42,22 +81,12 @@ struct ActiveWorkoutView: View {
                 Button("Close") { dismiss() }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 12) {
-                    if vm.sessionStatus != .discarded {
-                        Button {
-                            showExercisePicker = true
-                        } label: {
-                            Image(systemName: "plus.circle.fill")
-                        }
+                if vm.sessionStatus == .active {
+                    Button("Finish") {
+                        vm.finish()
+                        dismiss()
                     }
-
-                    if vm.sessionStatus == .active {
-                        Button("Finish") {
-                            vm.finish()
-                            dismiss()
-                        }
-                        .fontWeight(.semibold)
-                    }
+                    .fontWeight(.semibold)
                 }
             }
         }
@@ -70,6 +99,40 @@ struct ActiveWorkoutView: View {
             }
             .environmentObject(env)
         }
+        .sheet(item: $howToTarget) { target in
+            ExerciseHowToSheet(exerciseId: target.id)
+                .environmentObject(env)
+        }
+    }
+
+    private var addExerciseAndSuggestionBlock: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                showExercisePicker = true
+            } label: {
+                Label("Add exercise", systemImage: "plus.circle.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.borderedProminent)
+
+            if let sug = vm.suggestedNextExercise {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Often next").font(.caption).foregroundStyle(.secondary)
+                        Text(sug.displayName).font(.subheadline.weight(.medium))
+                    }
+                    Spacer()
+                    Button("Add") {
+                        vm.addExercise(exerciseId: sug.id)
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding(12)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DesignTokens.materialCornerRadius, style: .continuous))
+            }
+        }
+        .padding(.vertical, 8)
     }
 
     private var summaryStrip: some View {
@@ -92,6 +155,10 @@ struct ActiveWorkoutView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.materialCornerRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
     }
 
     private func timerStrip(rest: Int) -> some View {
@@ -105,22 +172,23 @@ struct ActiveWorkoutView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(.thinMaterial)
+        .padding(.horizontal, 12)
+        .padding(.top, 6)
     }
 
     private func exerciseHeader(_ card: SessionExerciseCard) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(card.displayName).font(.title3.weight(.semibold))
-                Spacer()
-                if vm.sessionStatus != .discarded {
-                    Menu {
-                        Button("Add set") {
-                            vm.addSet(sessionExerciseId: card.id, cloneFromSetId: card.sets.last?.id)
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
+                Button {
+                    howToTarget = ExerciseHowToTarget(id: card.exerciseId)
+                } label: {
+                    Text(card.displayName)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
                 }
+                .buttonStyle(.plain)
+                Spacer()
             }
 
             TextField("Exercise notes", text: Binding(
@@ -140,6 +208,12 @@ struct ActiveWorkoutView: View {
                 .disabled(vm.sessionStatus == .discarded)
             }
         }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.cardCornerRadius, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+        .shadow(color: .black.opacity(0.06), radius: DesignTokens.cardShadowRadius, y: DesignTokens.cardShadowY)
         .padding(.vertical, 6)
     }
 
@@ -154,12 +228,40 @@ struct ActiveWorkoutView: View {
                 },
                 onComplete: {
                     vm.completeSet(sessionExerciseId: card.id, setId: set.id)
-                },
-                onDelete: {
-                    vm.deleteSet(setId: set.id)
                 }
             )
-            .listRowSeparator(.visible)
+            .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button {
+                    vm.completeSet(sessionExerciseId: card.id, setId: set.id)
+                } label: {
+                    Label("Complete", systemImage: "checkmark.circle.fill")
+                }
+                .tint(.green)
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                Button(role: .destructive) {
+                    vm.deleteSet(setId: set.id)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+
+            if vm.isCurrentSet(sessionExerciseId: card.id, setId: set.id), vm.sessionStatus != .discarded {
+                Button {
+                    vm.addSet(sessionExerciseId: card.id, cloneFromSetId: set.id)
+                } label: {
+                    Label("Add set", systemImage: "plus.circle")
+                        .font(.subheadline.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 4)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            }
         }
     }
 
@@ -170,13 +272,136 @@ struct ActiveWorkoutView: View {
     }
 }
 
+/// Perimeter of the screen rect starting at top center (notch / Dynamic Island line), clockwise.
+private struct ScreenBorderShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let cornerRadius = min(50, rect.width / 4, rect.height / 4)
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+
+        path.move(to: CGPoint(x: width / 2, y: 0))
+
+        path.addLine(to: CGPoint(x: width - cornerRadius, y: 0))
+        path.addArc(
+            center: CGPoint(x: width - cornerRadius, y: cornerRadius),
+            radius: cornerRadius,
+            startAngle: .degrees(-90),
+            endAngle: .degrees(0),
+            clockwise: false
+        )
+
+        path.addLine(to: CGPoint(x: width, y: height - cornerRadius))
+        path.addArc(
+            center: CGPoint(x: width - cornerRadius, y: height - cornerRadius),
+            radius: cornerRadius,
+            startAngle: .degrees(0),
+            endAngle: .degrees(90),
+            clockwise: false
+        )
+
+        path.addLine(to: CGPoint(x: cornerRadius, y: height))
+        path.addArc(
+            center: CGPoint(x: cornerRadius, y: height - cornerRadius),
+            radius: cornerRadius,
+            startAngle: .degrees(90),
+            endAngle: .degrees(180),
+            clockwise: false
+        )
+
+        path.addLine(to: CGPoint(x: 0, y: cornerRadius))
+        path.addArc(
+            center: CGPoint(x: cornerRadius, y: cornerRadius),
+            radius: cornerRadius,
+            startAngle: .degrees(180),
+            endAngle: .degrees(270),
+            clockwise: false
+        )
+
+        path.addLine(to: CGPoint(x: width / 2, y: 0))
+
+        return path
+    }
+}
+
+private struct RestTimerScreenBorderOverlay: View {
+    let visual: RestTimerVisual
+    let onSkip: () -> Void
+
+    var body: some View {
+        // Timestamp-driven: progress = remaining / total so the trimmed arc shrinks toward rest end (countdown from notch start).
+        TimelineView(.periodic(from: .now, by: 1.0 / 30.0)) { timeline in
+            let total = max(visual.endsAt.timeIntervalSince(visual.startedAt), 0.001)
+            let remainingInterval = max(0, visual.endsAt.timeIntervalSince(timeline.date))
+            let progress = CGFloat(min(1, remainingInterval / total))
+            let remainingSeconds = max(0, Int(ceil(remainingInterval)))
+
+            ZStack {
+                Color.black.opacity(0.12)
+                    .ignoresSafeArea()
+
+                GeometryReader { geometry in
+                    let safeArea = geometry.safeAreaInsets
+                    ZStack {
+                        ScreenBorderShape()
+                            .stroke(Color.orange.opacity(0.35), lineWidth: 10)
+                            .padding(.top, -safeArea.top)
+                            .padding(.bottom, -safeArea.bottom)
+                            .padding(.leading, -safeArea.leading)
+                            .padding(.trailing, -safeArea.trailing)
+
+                        ScreenBorderShape()
+                            .trim(from: 0, to: progress)
+                            .stroke(
+                                AngularGradient(
+                                    gradient: Gradient(colors: [.cyan, .blue, .purple, .cyan]),
+                                    center: .center
+                                ),
+                                style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                            )
+                            .padding(.top, -safeArea.top)
+                            .padding(.bottom, -safeArea.bottom)
+                            .padding(.leading, -safeArea.leading)
+                            .padding(.trailing, -safeArea.trailing)
+                            .animation(.linear(duration: 0.05), value: progress)
+                    }
+                }
+                .ignoresSafeArea()
+
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: onSkip) {
+                            Text("Skip rest")
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(.thinMaterial, in: Capsule())
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.top, 12)
+                    }
+                    Spacer()
+                    Text("\(remainingSeconds)s")
+                        .font(.largeTitle.weight(.bold))
+                        .monospacedDigit()
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    Spacer()
+                }
+            }
+        }
+        .allowsHitTesting(true)
+    }
+}
+
 private struct SetRow: View {
     let mode: ExerciseMode
     let set: SetRowModel
     let canMutate: Bool
     let onChange: (Double?, Int?, Double?, Int?, Double?) -> Void
     let onComplete: () -> Void
-    let onDelete: () -> Void
 
     @State private var weightText: String = ""
     @State private var repsText: String = ""
@@ -184,72 +409,74 @@ private struct SetRow: View {
     @State private var distText: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                Spacer()
-                if set.status == .completed {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                }
-            }
-
-            HStack(spacing: 8) {
-                Text("Prev").frame(width: 52, alignment: .leading).font(.caption2).foregroundStyle(.secondary)
-                Text(set.previousDisplay)
-                    .font(.caption)
+                Text(label)
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(width: 28, alignment: .leading)
+                Text(set.previousDisplay)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
             }
 
-            switch mode {
-            case .weightReps, .bodyweightReps:
-                HStack(spacing: 10) {
-                    field("kg", text: $weightText, keyboard: UIKeyboardType.decimalPad) {
-                        onChange(Double(weightText.replacingOccurrences(of: ",", with: ".")), Int(repsText), nil, nil, nil)
-                    }
-                    field("reps", text: $repsText, keyboard: UIKeyboardType.numberPad) {
-                        onChange(Double(weightText.replacingOccurrences(of: ",", with: ".")), Int(repsText), nil, nil, nil)
-                    }
-                }
-            case .duration:
-                field("sec", text: $durText, keyboard: UIKeyboardType.numberPad) {
-                    onChange(nil, nil, nil, Int(durText), nil)
-                }
-            case .distanceDuration:
-                HStack(spacing: 10) {
-                    field("km", text: $distText, keyboard: UIKeyboardType.decimalPad) {
-                        onChange(nil, nil, Double(distText.replacingOccurrences(of: ",", with: ".")), Int(durText), nil)
-                    }
-                    field("sec", text: $durText, keyboard: UIKeyboardType.numberPad) {
-                        onChange(nil, nil, Double(distText.replacingOccurrences(of: ",", with: ".")), Int(durText), nil)
-                    }
-                }
-            }
+            HStack(alignment: .center, spacing: 8) {
+                fieldsBlock
+                    .layoutPriority(1)
 
-            HStack {
-                Button(role: .destructive) { onDelete() } label: { Image(systemName: "trash") }
-                    .disabled(!canMutate)
-                Spacer()
                 Button(action: onComplete) {
                     Image(systemName: set.status == .completed ? "checkmark.circle.fill" : "circle")
                         .font(.title2)
+                        .foregroundStyle(set.status == .completed ? Color.green : Color.secondary)
                 }
                 .buttonStyle(.plain)
                 .disabled(!canMutate)
+                .accessibilityLabel(set.status == .completed ? "Completed" : "Mark complete")
             }
         }
-        .padding(.vertical, 6)
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 1)
+        )
         .onAppear { syncFromSet(set) }
         .onChange(of: set) { _, new in
             syncFromSet(new)
         }
     }
 
-    private func syncFromSet(_ set: SetRowModel) {
-        weightText = set.weightKg.map { String($0) } ?? ""
-        repsText = set.reps.map(String.init) ?? ""
-        durText = set.durationSeconds.map(String.init) ?? ""
-        distText = set.distanceKm.map { String($0) } ?? ""
+    @ViewBuilder
+    private var fieldsBlock: some View {
+        switch mode {
+        case .weightReps, .bodyweightReps:
+            HStack(spacing: 8) {
+                compactField("kg", text: $weightText, keyboard: .decimalPad) {
+                    onChange(Double(weightText.replacingOccurrences(of: ",", with: ".")), Int(repsText), nil, nil, nil)
+                }
+                compactField("reps", text: $repsText, keyboard: .numberPad) {
+                    onChange(Double(weightText.replacingOccurrences(of: ",", with: ".")), Int(repsText), nil, nil, nil)
+                }
+            }
+        case .duration:
+            compactField("sec", text: $durText, keyboard: .numberPad) {
+                onChange(nil, nil, nil, Int(durText), nil)
+            }
+        case .distanceDuration:
+            HStack(spacing: 8) {
+                compactField("km", text: $distText, keyboard: .decimalPad) {
+                    onChange(nil, nil, Double(distText.replacingOccurrences(of: ",", with: ".")), Int(durText), nil)
+                }
+                compactField("sec", text: $durText, keyboard: .numberPad) {
+                    onChange(nil, nil, Double(distText.replacingOccurrences(of: ",", with: ".")), Int(durText), nil)
+                }
+            }
+        }
     }
 
     private var label: String {
@@ -260,16 +487,29 @@ private struct SetRow: View {
         }
     }
 
-    private func field(_ title: String, text: Binding<String>, keyboard: UIKeyboardType, commit: @escaping () -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+    private func compactField(
+        _ title: String,
+        text: Binding<String>,
+        keyboard: UIKeyboardType,
+        commit: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption2).foregroundStyle(.secondary)
             TextField(title, text: text)
                 .keyboardType(keyboard)
                 .textFieldStyle(.roundedBorder)
+                .lineLimit(1)
                 .disabled(!canMutate)
                 .onSubmit(commit)
                 .onChange(of: text.wrappedValue) { _, _ in commit() }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func syncFromSet(_ set: SetRowModel) {
+        weightText = set.weightKg.map { String($0) } ?? ""
+        repsText = set.reps.map(String.init) ?? ""
+        durText = set.durationSeconds.map(String.init) ?? ""
+        distText = set.distanceKm.map { String($0) } ?? ""
     }
 }

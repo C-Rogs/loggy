@@ -7,6 +7,7 @@ public protocol ExerciseRepositoryProtocol: Sendable {
     func createCustomExercise(displayName: String, mode: ExerciseMode) throws -> String
     func addAlias(exerciseId: String, alias: String) throws
     func resolveExerciseId(importedTitle: String) throws -> String?
+    func exerciseHowTo(exerciseId: String) throws -> ExerciseHowToInfo?
 }
 
 public protocol WorkoutSessionRepositoryProtocol: Sendable {
@@ -37,6 +38,9 @@ public protocol WorkoutSessionRepositoryProtocol: Sendable {
     func markRecoveryStale(sessionId: String) throws
     func touchActiveState(sessionId: String) throws
     func loadSessionForEdit(sessionId: String) throws -> (status: WorkoutSessionStatus, title: String?)
+    func syncActiveWorkoutFocus(sessionId: String, sessionExerciseId: String?, setEntryId: String?) throws
+    func weeklyCompletedVolumeByWeek(limitWeeks: Int) throws -> [WeeklyVolumePoint]
+    func weeklyStatsForExercise(exerciseId: String, limitWeeks: Int) throws -> [ExerciseWeeklyStatPoint]
 }
 
 public protocol RestTimerRepositoryProtocol: Sendable {

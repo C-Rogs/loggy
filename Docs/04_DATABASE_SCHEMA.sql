@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS exercise (
     secondary_muscle_groups_json TEXT NOT NULL DEFAULT '[]',
     is_custom INTEGER NOT NULL DEFAULT 0,
     sort_name TEXT NOT NULL,
+    instruction_text TEXT,
+    gif_url TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     deleted_at TEXT

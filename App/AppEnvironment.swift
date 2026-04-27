@@ -12,6 +12,9 @@ final class AppEnvironment: ObservableObject {
     let hevyImporter: HevyCSVImporter
     let coachService: CoachService
     let liveActivity: LiveActivityManager
+    let nextExerciseSuggestion: NextExerciseSuggestionService
+    let sessionCoach: SessionCoachService
+    let csvExporter: LoggyCSVExporter
 
     init() throws {
         let database = try AppDatabase.openShared()
@@ -28,5 +31,8 @@ final class AppEnvironment: ObservableObject {
         self.hevyImporter = HevyCSVImporter(pool: pool, importRepo: importBatches)
         self.coachService = CoachService(coach: coach)
         self.liveActivity = LiveActivityManager()
+        self.nextExerciseSuggestion = NextExerciseSuggestionService(pool: pool)
+        self.sessionCoach = SessionCoachService(pool: pool)
+        self.csvExporter = LoggyCSVExporter(pool: pool)
     }
 }

@@ -2,6 +2,27 @@ import Combine
 import Foundation
 import GRDB
 
+public struct RestTimerVisual: Equatable, Sendable {
+    public var timerId: String
+    public var startedAt: Date
+    public var endsAt: Date
+}
+
+enum ActiveWorkoutFocus {
+    /// First exercise with an incomplete set; current set is first incomplete. If all complete, last exercise and its last set.
+    static func currentSessionExerciseAndSet(in exercises: [SessionExerciseCard]) -> (sessionExerciseId: String, setId: String)? {
+        for card in exercises {
+            if let s = card.sets.first(where: { $0.status != .completed }) {
+                return (card.id, s.id)
+            }
+        }
+        if let last = exercises.last, let s = last.sets.last {
+            return (last.id, s.id)
+        }
+        return nil
+    }
+}
+
 @MainActor
 final class ActiveWorkoutViewModel: ObservableObject {
     let sessionId: String
@@ -15,6 +36,8 @@ final class ActiveWorkoutViewModel: ObservableObject {
     @Published private(set) var totalVolume: Double = 0
     @Published private(set) var completedSetCount: Int = 0
     @Published private(set) var restRemaining: Int?
+    @Published private(set) var restTimerVisual: RestTimerVisual?
+    @Published private(set) var suggestedNextExercise: ExerciseSummary?
 
     private var tick: AnyCancellable?
 
@@ -72,9 +95,41 @@ final class ActiveWorkoutViewModel: ObservableObject {
             }
 
             refreshRest()
+
+            let excluding = Set(exercises.map(\.exerciseId))
+            let focus = ActiveWorkoutFocus.currentSessionExerciseAndSet(in: exercises)
+            let afterCanon = focus.flatMap { fid in exercises.first(where: { $0.id == fid.sessionExerciseId })?.exerciseId }
+            suggestedNextExercise = try? env.nextExerciseSuggestion.suggestFollowing(
+                afterExerciseId: afterCanon,
+                excludingExerciseIds: excluding
+            )
+
+            if let focus {
+                try? env.workouts.syncActiveWorkoutFocus(
+                    sessionId: sessionId,
+                    sessionExerciseId: focus.sessionExerciseId,
+                    setEntryId: focus.setId
+                )
+            } else {
+                try? env.workouts.syncActiveWorkoutFocus(sessionId: sessionId, sessionExerciseId: nil, setEntryId: nil)
+            }
         } catch {
             // keep UI stable on read errors
         }
+    }
+
+    func currentExerciseIndex() -> Int? {
+        guard let wse = ActiveWorkoutFocus.currentSessionExerciseAndSet(in: exercises)?.sessionExerciseId else { return nil }
+        return exercises.firstIndex(where: { $0.id == wse })
+    }
+
+    func isCurrentExercise(cardId: String) -> Bool {
+        ActiveWorkoutFocus.currentSessionExerciseAndSet(in: exercises)?.sessionExerciseId == cardId
+    }
+
+    func isCurrentSet(sessionExerciseId: String, setId: String) -> Bool {
+        guard let cur = ActiveWorkoutFocus.currentSessionExerciseAndSet(in: exercises) else { return false }
+        return cur.sessionExerciseId == sessionExerciseId && cur.setId == setId
     }
 
     func updateSessionTitle(_ text: String) {
@@ -185,19 +240,31 @@ final class ActiveWorkoutViewModel: ObservableObject {
     private func refreshRest() {
         guard sessionStatus == .active else {
             restRemaining = nil
+            restTimerVisual = nil
             return
         }
         guard let snap = try? env.restTimers.activeTimer(for: sessionId),
               let ends = snap.endsAt
         else {
             restRemaining = nil
+            restTimerVisual = nil
             return
         }
         restRemaining = RestTimerService.remainingSeconds(endsAt: ends)
+        if let started = snap.startedAt {
+            restTimerVisual = RestTimerVisual(timerId: snap.id, startedAt: started, endsAt: ends)
+        } else {
+            restTimerVisual = nil
+        }
     }
 
     private func currentExerciseName() -> String {
-        exercises.first?.displayName ?? "Workout"
+        if let wse = ActiveWorkoutFocus.currentSessionExerciseAndSet(in: exercises)?.sessionExerciseId,
+           let name = exercises.first(where: { $0.id == wse })?.displayName
+        {
+            return name
+        }
+        return exercises.first?.displayName ?? "Workout"
     }
 
     private func pushLiveActivity() async {

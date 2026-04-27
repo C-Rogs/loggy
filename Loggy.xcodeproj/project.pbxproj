@@ -48,6 +48,12 @@
 		F0C4839F379D79BA156FA5FE /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74A54B83D7B564749B574822 /* AppDatabase.swift */; };
 		F2D67D3A8B5E8157FCB55E0A /* DomainEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 912CE9B0C18FA1DCF412F647 /* DomainEnums.swift */; };
 		F50BCE9B3DC1BE5644BFBAA6 /* SeedDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAE7A6E415DA3FB73424FC6 /* SeedDatabase.swift */; };
+		C5D4E3F2109876543210FEDC /* 04_DATABASE_SCHEMA.sql in Resources */ = {isa = PBXBuildFile; fileRef = A1E2B3C48D5F60718293A4B5C6 /* 04_DATABASE_SCHEMA.sql */; };
+		F90111223344556677889A01 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889901 /* DesignTokens.swift */; };
+		F90111223344556677889A02 /* SessionCoachService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889902 /* SessionCoachService.swift */; };
+		F90111223344556677889A03 /* NextExerciseSuggestionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889903 /* NextExerciseSuggestionService.swift */; };
+		F90111223344556677889A04 /* LoggyCSVExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889904 /* LoggyCSVExporter.swift */; };
+		F90111223344556677889A05 /* ExerciseDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889905 /* ExerciseDetailViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -75,16 +81,16 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0212F6493EEBD8122B8EB1DC /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		0212F6493EEBD8122B8EB1DC /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		1AD1F15627EAD106080770F4 /* PRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRService.swift; sourceTree = "<group>"; };
 		1FC2912D583912D3E4E49D0A /* TemplatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatesViewModel.swift; sourceTree = "<group>"; };
 		206CFCBAA4FACA56FD8C50FD /* SessionRecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecoveryView.swift; sourceTree = "<group>"; };
 		20B38DAB08ADF418B6D513B1 /* LoggyLiveActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyLiveActivityBundle.swift; sourceTree = "<group>"; };
 		2588176445A659D216DD66D1 /* HevyCSVImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HevyCSVImporter.swift; sourceTree = "<group>"; };
 		25D56E01EE0B2C5CD68FF21E /* DomainModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainModels.swift; sourceTree = "<group>"; };
-		25DE718748538F234BC94591 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		25DE718748538F234BC94591 /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		296F43BDFA283999B19C4E69 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
-		333ADC212FD683F252AD2A7F /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		333ADC212FD683F252AD2A7F /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		33EB2CA7C2EA50ACC4C4FC3C /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		3445E5AEF3E764E52D74CA09 /* ImportBatchRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportBatchRepository.swift; sourceTree = "<group>"; };
 		36BF2C65A011413DCAD0E1AF /* WorkoutCalculationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCalculationService.swift; sourceTree = "<group>"; };
@@ -92,11 +98,11 @@
 		43FE1E10D70A9DBC788EEA1A /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
 		4520053CD853DAC7B90C2710 /* AppMigrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMigrator.swift; sourceTree = "<group>"; };
 		471D0D097F260C8F438FC7F2 /* ISO8601.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISO8601.swift; sourceTree = "<group>"; };
-		4C54A5771F19E3199E19C065 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
-		5AD371716CBFCA98332F3588 /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		4C54A5771F19E3199E19C065 /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
+		5AD371716CBFCA98332F3588 /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		5D4BB3345F4DF358B165C13A /* ActiveWorkoutViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutViewModel.swift; sourceTree = "<group>"; };
 		6320FEEDC3624EF5571AFBD3 /* TemplateRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateRepository.swift; sourceTree = "<group>"; };
-		67D851DBB71794F994A97AA7 /* Loggy.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Loggy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		67D851DBB71794F994A97AA7 /* Loggy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Loggy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6C9E57114DC8979B841D13E4 /* ExerciseHistoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseHistoryService.swift; sourceTree = "<group>"; };
 		71CEBDFB15F7BDE86D106376 /* ExerciseRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRepository.swift; sourceTree = "<group>"; };
 		7372CACA900FB887C5B761CE /* ActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveWorkoutView.swift; sourceTree = "<group>"; };
@@ -109,9 +115,9 @@
 		9FAE7A6E415DA3FB73424FC6 /* SeedDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedDatabase.swift; sourceTree = "<group>"; };
 		AB36AA4EE8BD568F3021D318 /* RestTimerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerService.swift; sourceTree = "<group>"; };
 		ABDB2FCFFF14673D206872EC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		B7CE47489DF4E0B2579C554A /* LoggyLiveActivity.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = LoggyLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B7CE47489DF4E0B2579C554A /* LoggyLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LoggyLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B8E350E439FB9F46552EFF9E /* ExerciseDirectoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDirectoryView.swift; sourceTree = "<group>"; };
-		C275C608D866005D61CDD48D /* .gitkeep */ = {isa = PBXFileReference; path = .gitkeep; sourceTree = "<group>"; };
+		C275C608D866005D61CDD48D /* .gitkeep */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitkeep; sourceTree = "<group>"; };
 		C530CA74B48627DBAF34FEC3 /* WorkoutActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActivityAttributes.swift; sourceTree = "<group>"; };
 		C77A74607E4DF6D86AB5768E /* TemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatesView.swift; sourceTree = "<group>"; };
 		C7D295E96F43B60E1651BEED /* CoachService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachService.swift; sourceTree = "<group>"; };
@@ -122,6 +128,12 @@
 		F34B157E7EDE60A2A7522AF8 /* LoggyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyApp.swift; sourceTree = "<group>"; };
 		F4F879CFA6BEEDB7F088BE38 /* ExercisePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePickerSheet.swift; sourceTree = "<group>"; };
 		FBB18EF63CAA9E3D76CC0273 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		F90111223344556677889901 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
+		F90111223344556677889902 /* SessionCoachService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCoachService.swift; sourceTree = "<group>"; };
+		F90111223344556677889903 /* NextExerciseSuggestionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextExerciseSuggestionService.swift; sourceTree = "<group>"; };
+		F90111223344556677889904 /* LoggyCSVExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyCSVExporter.swift; sourceTree = "<group>"; };
+		F90111223344556677889905 /* ExerciseDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDetailViews.swift; sourceTree = "<group>"; };
+		A1E2B3C48D5F60718293A4B5C6 /* 04_DATABASE_SCHEMA.sql */ = {isa = PBXFileReference; lastKnownFileType = text; path = 04_DATABASE_SCHEMA.sql; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +146,17 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B4A392817465534241302918 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C5D4E3F2109876543210FEDC /* 04_DATABASE_SCHEMA.sql in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXGroup section */
 		01AB1096C704F33BA5D674D5 /* App */ = {
@@ -186,6 +209,7 @@
 				0212F6493EEBD8122B8EB1DC /* .gitkeep */,
 				7372CACA900FB887C5B761CE /* ActiveWorkoutView.swift */,
 				B8E350E439FB9F46552EFF9E /* ExerciseDirectoryView.swift */,
+				F90111223344556677889905 /* ExerciseDetailViews.swift */,
 				F4F879CFA6BEEDB7F088BE38 /* ExercisePickerSheet.swift */,
 				FBB18EF63CAA9E3D76CC0273 /* HomeView.swift */,
 				33EB2CA7C2EA50ACC4C4FC3C /* RootView.swift */,
@@ -198,6 +222,7 @@
 		8B88D93489307240AB3ACC33 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				F90111223344556677889901 /* DesignTokens.swift */,
 				C530CA74B48627DBAF34FEC3 /* WorkoutActivityAttributes.swift */,
 			);
 			path = Shared;
@@ -222,10 +247,13 @@
 				C7D295E96F43B60E1651BEED /* CoachService.swift */,
 				6C9E57114DC8979B841D13E4 /* ExerciseHistoryService.swift */,
 				2588176445A659D216DD66D1 /* HevyCSVImporter.swift */,
+				F90111223344556677889904 /* LoggyCSVExporter.swift */,
+				F90111223344556677889903 /* NextExerciseSuggestionService.swift */,
 				89208A0B5905B6B39EDF9F04 /* LiveActivityManager.swift */,
 				7B7EAC399AEC2918FF1C0D61 /* PreviousValueMatcher.swift */,
 				1AD1F15627EAD106080770F4 /* PRService.swift */,
 				AB36AA4EE8BD568F3021D318 /* RestTimerService.swift */,
+				F90111223344556677889902 /* SessionCoachService.swift */,
 				9FAE7A6E415DA3FB73424FC6 /* SeedDatabase.swift */,
 				36BF2C65A011413DCAD0E1AF /* WorkoutCalculationService.swift */,
 				944F9B0855322F2855239262 /* WorkoutTotalsService.swift */,
@@ -247,8 +275,17 @@
 			isa = PBXGroup;
 			children = (
 				01AB1096C704F33BA5D674D5 /* App */,
+				D0C1B2A39485726152433445 /* Docs */,
 				E6C56CC9E370BBC2F0A7FCCE /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		D0C1B2A39485726152433445 /* Docs */ = {
+			isa = PBXGroup;
+			children = (
+				A1E2B3C48D5F60718293A4B5C6 /* 04_DATABASE_SCHEMA.sql */,
+			);
+			path = Docs;
 			sourceTree = "<group>";
 		};
 		E6C56CC9E370BBC2F0A7FCCE /* Products */ = {
@@ -295,6 +332,7 @@
 			buildPhases = (
 				7E1A2A6CC7B952D926AAA83D /* Sources */,
 				3AF7A5B58120CF4912FB7185 /* Frameworks */,
+				B4A392817465534241302918 /* Resources */,
 				4DD2D6FD20E8033DE91D0DEE /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -318,8 +356,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = 2962B00B6CFD618E523A62A3 /* Build configuration list for PBXProject "Loggy" */;
 			developmentRegion = en;
@@ -331,7 +367,7 @@
 			mainGroup = C584D032ADF72921A50EB839;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				6FC55B79BB7A54917C6FBDDE /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				6FC55B79BB7A54917C6FBDDE /* XCRemoteSwiftPackageReference "GRDB" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E6C56CC9E370BBC2F0A7FCCE /* Products */;
@@ -361,6 +397,8 @@
 			files = (
 				663F9E329F5B214A9D58C11B /* ActiveWorkoutView.swift in Sources */,
 				AC2F4F20B80A5A444BAFCBBE /* ActiveWorkoutViewModel.swift in Sources */,
+				F90111223344556677889A01 /* DesignTokens.swift in Sources */,
+				F90111223344556677889A05 /* ExerciseDetailViews.swift in Sources */,
 				F0C4839F379D79BA156FA5FE /* AppDatabase.swift in Sources */,
 				8650F61E61DBA516CD4130F1 /* AppEnvironment.swift in Sources */,
 				67B2A05135C1D23F802DD302 /* AppMigrator.swift in Sources */,
@@ -375,13 +413,16 @@
 				68BFA651B4EF67C57E3AFC10 /* ExerciseRepository.swift in Sources */,
 				4DC9AB25DC9195A43A04B606 /* HevyCSVImporter.swift in Sources */,
 				1351ED42B910A3666A41C568 /* HomeView.swift in Sources */,
+				F90111223344556677889A04 /* LoggyCSVExporter.swift in Sources */,
 				7BF4F77FE8B4E0FE884C1C5D /* HomeViewModel.swift in Sources */,
 				B63FD981F9F94EF014FDAE4C /* ISO8601.swift in Sources */,
 				C250DFDE5AEED48AB3396909 /* ImportBatchRepository.swift in Sources */,
 				9790FDE683FFB66E9C806805 /* LiveActivityManager.swift in Sources */,
+				F90111223344556677889A02 /* SessionCoachService.swift in Sources */,
 				43806AF62C3AB74A4DE7AE35 /* LoggyApp.swift in Sources */,
 				05505B65F1E59BA3F78E8E0C /* PRService.swift in Sources */,
 				23B8415DA20D4C8BC51D408B /* PreviousValueMatcher.swift in Sources */,
+				F90111223344556677889A03 /* NextExerciseSuggestionService.swift in Sources */,
 				74E9234084565724D1E0979F /* RepositoryProtocols.swift in Sources */,
 				2FCFFE0560C20BFA1592C96E /* RestTimerRepository.swift in Sources */,
 				BF4E5AD06D7664B1AB19A0BF /* RestTimerService.swift in Sources */,
@@ -412,6 +453,7 @@
 		611CAAAAE85532F5487979F8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Widgets/LiveActivity/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -548,6 +590,7 @@
 		E2E89DB0832850207B60329B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Widgets/LiveActivity/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -567,6 +610,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -586,6 +630,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -633,7 +678,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		6FC55B79BB7A54917C6FBDDE /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+		6FC55B79BB7A54917C6FBDDE /* XCRemoteSwiftPackageReference "GRDB" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/groue/GRDB.swift";
 			requirement = {
@@ -646,7 +691,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		2E7533B442E8044A00077652 /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 6FC55B79BB7A54917C6FBDDE /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			package = 6FC55B79BB7A54917C6FBDDE /* XCRemoteSwiftPackageReference "GRDB" */;
 			productName = GRDB;
 		};
 /* End XCSwiftPackageProductDependency section */
