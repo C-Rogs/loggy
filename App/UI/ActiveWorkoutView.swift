@@ -93,10 +93,10 @@ struct ActiveWorkoutView: View {
         .onAppear { vm.onAppear() }
         .onDisappear { vm.onDisappear() }
         .sheet(isPresented: $showExercisePicker) {
-            ExercisePickerSheet { exerciseId in
-                vm.addExercise(exerciseId: exerciseId)
+            ExercisePickerSheet(onPickMany: { ids in
+                vm.addExercises(exerciseIds: ids)
                 showExercisePicker = false
-            }
+            })
             .environmentObject(env)
         }
         .sheet(item: $howToTarget) { target in
@@ -106,33 +106,57 @@ struct ActiveWorkoutView: View {
     }
 
     private var addExerciseAndSuggestionBlock: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 0) {
             Button {
                 showExercisePicker = true
             } label: {
                 Label("Add exercise", systemImage: "plus.circle.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.plain)
 
-            if let sug = vm.suggestedNextExercise {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Often next").font(.caption).foregroundStyle(.secondary)
-                        Text(sug.displayName).font(.subheadline.weight(.medium))
-                    }
-                    Spacer()
-                    Button("Add") {
+            Rectangle()
+                .fill(Color(.separator))
+                .frame(width: 1)
+                .padding(.vertical, 10)
+
+            Group {
+                if let sug = vm.suggestedNextExercise {
+                    Button {
                         vm.addExercise(exerciseId: sug.id)
+                    } label: {
+                        VStack(spacing: 2) {
+                            Text("Often next")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text(sug.displayName)
+                                .font(.caption.weight(.semibold))
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 8)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.plain)
+                } else {
+                    Text("—")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
                 }
-                .padding(12)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DesignTokens.materialCornerRadius, style: .continuous))
             }
         }
-        .padding(.vertical, 8)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+        .padding(.vertical, 6)
     }
 
     private var summaryStrip: some View {
@@ -275,7 +299,8 @@ struct ActiveWorkoutView: View {
 /// Perimeter of the screen rect starting at top center (notch / Dynamic Island line), clockwise.
 private struct ScreenBorderShape: Shape {
     func path(in rect: CGRect) -> Path {
-        let cornerRadius = min(50, rect.width / 4, rect.height / 4)
+        let shortest = min(rect.width, rect.height)
+        let cornerRadius = min(62, shortest * 0.23)
         var path = Path()
         let width = rect.width
         let height = rect.height
@@ -337,9 +362,6 @@ private struct RestTimerScreenBorderOverlay: View {
             let remainingSeconds = max(0, Int(ceil(remainingInterval)))
 
             ZStack {
-                Color.black.opacity(0.12)
-                    .ignoresSafeArea()
-
                 GeometryReader { geometry in
                     let safeArea = geometry.safeAreaInsets
                     ZStack {
@@ -369,18 +391,6 @@ private struct RestTimerScreenBorderOverlay: View {
                 .ignoresSafeArea()
 
                 VStack {
-                    HStack {
-                        Spacer()
-                        Button(action: onSkip) {
-                            Text("Skip rest")
-                                .font(.subheadline.weight(.semibold))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(.thinMaterial, in: Capsule())
-                        }
-                        .padding(.trailing, 20)
-                        .padding(.top, 12)
-                    }
                     Spacer()
                     Text("\(remainingSeconds)s")
                         .font(.largeTitle.weight(.bold))
@@ -391,8 +401,20 @@ private struct RestTimerScreenBorderOverlay: View {
                     Spacer()
                 }
             }
+            .allowsHitTesting(false)
         }
-        .allowsHitTesting(true)
+        .allowsHitTesting(false)
+        .overlay(alignment: .topTrailing) {
+            Button(action: onSkip) {
+                Text("Skip rest")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.thinMaterial, in: Capsule())
+            }
+            .padding(.trailing, 20)
+            .padding(.top, 12)
+        }
     }
 }
 
