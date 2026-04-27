@@ -8,17 +8,21 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
         public var completedSetCount: Int
         public var currentExerciseName: String
         public var restRemainingSeconds: Int?
+        /// Wall-clock end of active rest; lets the Dynamic Island use `Text(..., style: .timer)` without per-second pushes.
+        public var restEndsAt: Date?
 
         public init(
             elapsedSeconds: Int,
             completedSetCount: Int,
             currentExerciseName: String,
-            restRemainingSeconds: Int?
+            restRemainingSeconds: Int?,
+            restEndsAt: Date? = nil
         ) {
             self.elapsedSeconds = elapsedSeconds
             self.completedSetCount = completedSetCount
             self.currentExerciseName = currentExerciseName
             self.restRemainingSeconds = restRemainingSeconds
+            self.restEndsAt = restEndsAt
         }
     }
 

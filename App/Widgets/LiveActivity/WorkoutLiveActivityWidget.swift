@@ -14,26 +14,59 @@ struct WorkoutLiveActivityWidget: Widget {
                         .font(.caption)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    if let r = context.state.restRemainingSeconds {
-                        Text("Rest \(r)s")
-                            .font(.caption)
-                            .monospacedDigit()
-                    }
+                    restExpandedLabel(state: context.state)
                 }
             } compactLeading: {
-                Image(systemName: "dumbbell")
+                if let end = context.state.restEndsAt {
+                    Text(end, style: .timer)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                } else {
+                    Image(systemName: "dumbbell")
+                }
             } compactTrailing: {
-                if let r = context.state.restRemainingSeconds {
-                    Text("\(r)s").font(.caption2).monospacedDigit()
+                if context.state.restEndsAt != nil {
+                    Text("Rest")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
                 } else {
                     Text("\(context.state.elapsedSeconds / 60)m")
                         .font(.caption2)
                         .monospacedDigit()
                 }
             } minimal: {
-                Image(systemName: "timer")
+                if let end = context.state.restEndsAt {
+                    Text(end, style: .timer)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                } else {
+                    Image(systemName: "dumbbell")
+                }
             }
         }
+    }
+}
+
+@ViewBuilder
+private func restExpandedLabel(state: WorkoutActivityAttributes.ContentState) -> some View {
+    if let end = state.restEndsAt {
+        VStack(alignment: .trailing, spacing: 2) {
+            Text("Rest")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(end, style: .timer)
+                .font(.title3.weight(.semibold))
+                .monospacedDigit()
+        }
+    } else if let r = state.restRemainingSeconds {
+        Text("Rest \(r)s")
+            .font(.caption)
+            .monospacedDigit()
     }
 }
 
@@ -49,7 +82,12 @@ private struct WorkoutLiveActivityLockScreenView: View {
                     .font(.caption)
                     .monospacedDigit()
                 Spacer()
-                if let r = state.restRemainingSeconds {
+                if let end = state.restEndsAt {
+                    Text(end, style: .timer)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                } else if let r = state.restRemainingSeconds {
                     Text("Rest \(r)s")
                         .font(.caption)
                         .monospacedDigit()

@@ -15,7 +15,8 @@ final class LiveActivityManager: @unchecked Sendable {
             elapsedSeconds: 0,
             completedSetCount: 0,
             currentExerciseName: "Workout",
-            restRemainingSeconds: nil
+            restRemainingSeconds: nil,
+            restEndsAt: nil
         )
 
         do {
@@ -30,7 +31,8 @@ final class LiveActivityManager: @unchecked Sendable {
         elapsedSeconds: Int,
         completedSetCount: Int,
         currentExerciseName: String,
-        restRemainingSeconds: Int?
+        restRemainingSeconds: Int?,
+        restEndsAt: Date?
     ) async {
         guard let activity else { return }
         await activity.update(
@@ -38,7 +40,8 @@ final class LiveActivityManager: @unchecked Sendable {
                 elapsedSeconds: elapsedSeconds,
                 completedSetCount: completedSetCount,
                 currentExerciseName: currentExerciseName,
-                restRemainingSeconds: restRemainingSeconds
+                restRemainingSeconds: restRemainingSeconds,
+                restEndsAt: restEndsAt
             )
         )
     }

@@ -143,6 +143,14 @@ final class ActiveWorkoutViewModel: ObservableObject {
         Task { @MainActor in await pushLiveActivity() }
     }
 
+    func addExercises(exerciseIds: [String]) {
+        for id in exerciseIds {
+            try? env.workouts.addExercise(sessionId: sessionId, exerciseId: id)
+        }
+        reload()
+        Task { @MainActor in await pushLiveActivity() }
+    }
+
     func addSet(sessionExerciseId: String, cloneFromSetId: String?) {
         try? env.workouts.addSet(sessionExerciseId: sessionExerciseId, cloneFromSetId: cloneFromSetId)
         reload()
@@ -272,7 +280,8 @@ final class ActiveWorkoutViewModel: ObservableObject {
             elapsedSeconds: elapsedSeconds,
             completedSetCount: completedSetCount,
             currentExerciseName: currentExerciseName(),
-            restRemainingSeconds: restRemaining
+            restRemainingSeconds: restRemaining,
+            restEndsAt: restTimerVisual?.endsAt
         )
     }
 }
