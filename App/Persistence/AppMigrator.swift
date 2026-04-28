@@ -1,12 +1,14 @@
 import Foundation
 import GRDB
 
+private final class MigrationSchemaBundleLocator: NSObject {}
+
 struct AppMigrator {
     func migrate(_ writer: DatabaseWriter) throws {
         var migrator = DatabaseMigrator()
 
         migrator.registerMigration("schema_v1") { db in
-            let bundle = Bundle.main
+            let bundle = Bundle(for: MigrationSchemaBundleLocator.self)
             guard let url = bundle.url(forResource: "04_DATABASE_SCHEMA", withExtension: "sql"),
                   let sql = try? String(contentsOf: url, encoding: .utf8)
             else {
@@ -88,6 +90,40 @@ struct AppMigrator {
                         arguments: [text, now, canonical]
                     )
                 }
+            }
+        }
+
+        migrator.registerMigration("hevy_library_exercises_v4") { db in
+            let now = ISO8601UTC.string(from: Date())
+            for row in HevyStyleExerciseCatalog.rows {
+                let existing = try Int.fetchOne(
+                    db,
+                    sql: """
+                        SELECT COUNT(*) FROM exercise
+                        WHERE lower(canonical_name) = lower(?) AND deleted_at IS NULL
+                        """,
+                    arguments: [row.canonical]
+                ) ?? 0
+                if existing > 0 { continue }
+
+                let id = UUID().uuidString
+                try db.execute(
+                    sql: """
+                        INSERT INTO exercise (
+                            id, canonical_name, display_name, exercise_mode, equipment_type,
+                            primary_muscle_group, secondary_muscle_groups_json, is_custom, sort_name,
+                            created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, NULL, NULL, '[]', 0, ?, ?, ?)
+                        """,
+                    arguments: [id, row.canonical, row.display, row.mode.rawValue, row.display.lowercased(), now, now]
+                )
+                try db.execute(
+                    sql: """
+                        INSERT INTO exercise_alias (id, exercise_id, alias, normalized_alias, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                    arguments: [UUID().uuidString, id, row.display, row.display.lowercased(), now]
+                )
             }
         }
 

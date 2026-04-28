@@ -218,11 +218,30 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
     public func addExercise(sessionId: String, exerciseId: String) throws {
         let now = ISO8601UTC.string(from: Date())
         try pool.write { db in
+            func intCol(_ row: Row, _ key: String) -> Int? {
+                if let v: Int = row[key] { return v }
+                if let v: Int64 = row[key] { return Int(v) }
+                return nil
+            }
+
             let mode: String = try String.fetchOne(
                 db,
                 sql: "SELECT exercise_mode FROM exercise WHERE id = ?",
                 arguments: [exerciseId]
             ) ?? ExerciseMode.weightReps.rawValue
+            let modeEnum = ExerciseMode(rawValue: mode) ?? .weightReps
+
+            let sessionSource: String = try String.fetchOne(
+                db,
+                sql: "SELECT source FROM workout_session WHERE id = ? AND deleted_at IS NULL",
+                arguments: [sessionId]
+            ) ?? WorkoutSessionSource.manual.rawValue
+
+            let sessionTitle: String? = try String.fetchOne(
+                db,
+                sql: "SELECT title FROM workout_session WHERE id = ? AND deleted_at IS NULL",
+                arguments: [sessionId]
+            )
 
             let nextOrder: Int = (try Int.fetchOne(
                 db,
@@ -231,27 +250,142 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
             )) ?? 0
 
             let wseId = UUID().uuidString
+
+            struct SetSeed {
+                let setType: String
+                let weightKg: Double?
+                let reps: Int?
+                let distanceKm: Double?
+                let durationSeconds: Int?
+            }
+
+            var seeds: [SetSeed] = []
+            var targetRestSeconds = 90
+
+            var templateRow: Row?
+            if sessionSource == WorkoutSessionSource.template.rawValue {
+                let trimmedTitle = sessionTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                if !trimmedTitle.isEmpty {
+                    templateRow = try Row.fetchOne(
+                        db,
+                        sql: """
+                            SELECT wte.target_set_count, wte.target_weight_kg, wte.target_rep_min, wte.target_rep_max,
+                                   wte.target_duration_seconds, wte.target_distance_km, wte.default_rest_seconds, wte.default_set_type
+                            FROM workout_template_exercise wte
+                            JOIN workout_template wt ON wt.id = wte.workout_template_id AND wt.deleted_at IS NULL
+                            WHERE wte.exercise_id = ? AND wte.deleted_at IS NULL
+                              AND trim(COALESCE(wt.name, '')) = trim(?)
+                            LIMIT 1
+                            """,
+                        arguments: [exerciseId, trimmedTitle]
+                    )
+                }
+            }
+
+            if let tr = templateRow {
+                let count = max(intCol(tr, "target_set_count") ?? 3, 1)
+                if let dr = intCol(tr, "default_rest_seconds") {
+                    targetRestSeconds = dr
+                }
+                let setTypeStr: String? = tr["default_set_type"]
+                let setType = (setTypeStr.flatMap { SetType(rawValue: $0) } ?? .normal).rawValue
+                let tw: Double? = tr["target_weight_kg"]
+                let rMin = intCol(tr, "target_rep_min")
+                let rMax = intCol(tr, "target_rep_max")
+                let mergedReps: Int? = {
+                    if let a = rMin, let b = rMax { return (a + b) / 2 }
+                    return rMin ?? rMax
+                }()
+                let tplDur = intCol(tr, "target_duration_seconds")
+                let tplDist: Double? = tr["target_distance_km"]
+
+                for _ in 0 ..< count {
+                    switch modeEnum {
+                    case .weightReps:
+                        seeds.append(SetSeed(setType: setType, weightKg: tw, reps: mergedReps, distanceKm: nil, durationSeconds: nil))
+                    case .bodyweightReps:
+                        seeds.append(SetSeed(setType: setType, weightKg: nil, reps: mergedReps, distanceKm: nil, durationSeconds: nil))
+                    case .duration:
+                        seeds.append(SetSeed(setType: setType, weightKg: nil, reps: nil, distanceKm: nil, durationSeconds: tplDur))
+                    case .distanceDuration:
+                        seeds.append(SetSeed(setType: setType, weightKg: nil, reps: nil, distanceKm: tplDist, durationSeconds: tplDur))
+                    }
+                }
+            }
+
+            if seeds.isEmpty {
+                if let histWse: String = try String.fetchOne(
+                    db,
+                    sql: """
+                        SELECT wse.id
+                        FROM workout_session_exercise wse
+                        JOIN workout_session ws ON ws.id = wse.workout_session_id
+                        WHERE wse.exercise_id = ? AND wse.deleted_at IS NULL AND ws.deleted_at IS NULL
+                          AND ws.status = 'completed' AND ws.id != ?
+                        ORDER BY datetime(COALESCE(ws.ended_at, ws.started_at)) DESC, wse.display_order ASC, wse.created_at DESC
+                        LIMIT 1
+                        """,
+                    arguments: [exerciseId, sessionId]
+                ) {
+                    if let restRow = try Row.fetchOne(
+                        db,
+                        sql: "SELECT target_rest_seconds FROM workout_session_exercise WHERE id = ?",
+                        arguments: [histWse]
+                    ), let r = intCol(restRow, "target_rest_seconds") {
+                        targetRestSeconds = r
+                    }
+                    let hRows = try Row.fetchAll(
+                        db,
+                        sql: """
+                            SELECT set_type, weight_kg, reps, distance_km, duration_seconds
+                            FROM set_entry
+                            WHERE workout_session_exercise_id = ? AND deleted_at IS NULL
+                            ORDER BY set_index ASC
+                            """,
+                        arguments: [histWse]
+                    )
+                    for hr in hRows {
+                        let st: String = hr["set_type"] as String? ?? SetType.normal.rawValue
+                        seeds.append(
+                            SetSeed(
+                                setType: st,
+                                weightKg: hr["weight_kg"],
+                                reps: intCol(hr, "reps"),
+                                distanceKm: hr["distance_km"],
+                                durationSeconds: intCol(hr, "duration_seconds")
+                            )
+                        )
+                    }
+                }
+            }
+
+            if seeds.isEmpty {
+                seeds.append(SetSeed(setType: SetType.normal.rawValue, weightKg: nil, reps: nil, distanceKm: nil, durationSeconds: nil))
+            }
+
             try db.execute(
                 sql: """
                     INSERT INTO workout_session_exercise (
                         id, workout_session_id, exercise_id, block_id, display_order, notes,
                         exercise_mode, target_rest_seconds, is_collapsed, created_at, updated_at
-                    ) VALUES (?, ?, ?, NULL, ?, NULL, ?, 90, 0, ?, ?)
-                """,
-                arguments: [wseId, sessionId, exerciseId, nextOrder, mode, now, now]
+                    ) VALUES (?, ?, ?, NULL, ?, NULL, ?, ?, 0, ?, ?)
+                    """,
+                arguments: [wseId, sessionId, exerciseId, nextOrder, mode, targetRestSeconds, now, now]
             )
 
-            // Start with one planned set
-            let setId = UUID().uuidString
-            try db.execute(
-                sql: """
-                    INSERT INTO set_entry (
-                        id, workout_session_exercise_id, set_index, set_type, status,
-                        created_at, updated_at
-                    ) VALUES (?, ?, 0, 'normal', 'planned', ?, ?)
-                """,
-                arguments: [setId, wseId, now, now]
-            )
+            for (idx, s) in seeds.enumerated() {
+                let setId = UUID().uuidString
+                try db.execute(
+                    sql: """
+                        INSERT INTO set_entry (
+                            id, workout_session_exercise_id, set_index, set_type, status,
+                            weight_kg, reps, distance_km, duration_seconds,
+                            created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, 'planned', ?, ?, ?, ?, ?, ?)
+                        """,
+                    arguments: [setId, wseId, idx, s.setType, s.weightKg, s.reps, s.distanceKm, s.durationSeconds, now, now]
+                )
+            }
         }
     }
 
@@ -383,7 +517,7 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                 sql: """
                     UPDATE set_entry
                     SET weight_kg = ?, reps = ?, distance_km = ?, duration_seconds = ?, rpe = ?, updated_at = ?
-                    WHERE id = ?
+                    WHERE id = ? AND deleted_at IS NULL
                 """,
                 arguments: [weightKg, reps, distanceKm, durationSeconds, rpe, now, setId]
             )
@@ -494,6 +628,39 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
         try WorkoutTotalsService().recomputeCaches(pool: pool, sessionId: sessionId)
     }
 
+    public func uncompleteSet(sessionId: String, sessionExerciseId: String, setId: String) throws {
+        let now = ISO8601UTC.string(from: Date())
+        try pool.write { db in
+            let sessionStatus: String = try String.fetchOne(
+                db,
+                sql: "SELECT status FROM workout_session WHERE id = ? AND deleted_at IS NULL",
+                arguments: [sessionId]
+            ) ?? ""
+            guard sessionStatus == WorkoutSessionStatus.active.rawValue else { return }
+
+            try db.execute(
+                sql: """
+                    UPDATE set_entry
+                    SET status = 'planned', completed_at = NULL, updated_at = ?
+                    WHERE id = ? AND workout_session_exercise_id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [now, setId, sessionExerciseId]
+            )
+
+            try db.execute(
+                sql: """
+                    UPDATE rest_timer_state
+                    SET state = 'skipped', updated_at = ?, last_action_at = ?
+                    WHERE workout_session_id = ? AND state IN ('running','paused')
+                    """,
+                arguments: [now, now, sessionId]
+            )
+
+            try ActiveWorkoutStateRepository.touch(db: db, sessionId: sessionId, now: now)
+        }
+        try WorkoutTotalsService().recomputeCaches(pool: pool, sessionId: sessionId)
+    }
+
     public func deleteSet(setId: String) throws {
         let now = ISO8601UTC.string(from: Date())
         try pool.write { db in
@@ -503,14 +670,19 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                     SELECT wse.id, wse.workout_session_id
                     FROM set_entry se
                     JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
-                    WHERE se.id = ?
+                    WHERE se.id = ? AND se.deleted_at IS NULL
                 """,
                 arguments: [setId]
             ) else { return }
             let wseId: String = row["id"]
             let sessionId: String = row["workout_session_id"]
 
-            try db.execute(sql: "UPDATE set_entry SET deleted_at = ? WHERE id = ?", arguments: [now, setId])
+            // Free UNIQUE(workout_session_exercise_id, set_index) slot before reindexing remaining rows.
+            let sentinelIndex = Self.softDeletedSetIndexSentinel(setId: setId)
+            try db.execute(
+                sql: "UPDATE set_entry SET deleted_at = ?, set_index = ?, updated_at = ? WHERE id = ?",
+                arguments: [now, sentinelIndex, now, setId]
+            )
 
             let remaining = try Row.fetchAll(
                 db,
@@ -525,8 +697,17 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                 )
             }
 
-            try WorkoutTotalsService().recomputeCaches(pool: pool, sessionId: sessionId)
+            try WorkoutTotalsService().recomputeCaches(db: db, sessionId: sessionId)
         }
+    }
+
+    /// Negative `set_index` for soft-deleted rows avoids UNIQUE(wse_id, set_index) collisions when reindexing.
+    private static func softDeletedSetIndexSentinel(setId: String) -> Int {
+        var h = 5381
+        for b in setId.utf8 {
+            h = ((h << 5) &+ h) &+ Int(b)
+        }
+        return -1_000_000 - (abs(h) % 999_000_000)
     }
 
     public func updateSessionExerciseNotes(sessionExerciseId: String, notes: String?) throws {

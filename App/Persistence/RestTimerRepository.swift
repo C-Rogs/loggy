@@ -49,6 +49,49 @@ public final class RestTimerRepository: RestTimerRepositoryProtocol {
         }
     }
 
+    public func completeExpiredRunningTimersIfNeeded(sessionId: String) throws {
+        let rows = try pool.read { db in
+            try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id, ends_at FROM rest_timer_state
+                    WHERE workout_session_id = ? AND state = 'running' AND ends_at IS NOT NULL
+                    """,
+                arguments: [sessionId]
+            )
+        }
+        let now = Date()
+        let ids: [String] = rows.compactMap { r -> String? in
+            let id: String = r["id"]
+            guard let endsStr: String = r["ends_at"],
+                  let ends = ISO8601UTC.date(from: endsStr),
+                  ends <= now
+            else { return nil }
+            return id
+        }
+        guard !ids.isEmpty else { return }
+        let nowStr = ISO8601UTC.string(from: now)
+        try pool.write { db in
+            for id in ids {
+                try db.execute(
+                    sql: """
+                        UPDATE rest_timer_state
+                        SET state = 'completed', updated_at = ?, last_action_at = ?
+                        WHERE id = ? AND state = 'running'
+                        """,
+                    arguments: [nowStr, nowStr, id]
+                )
+                try db.execute(
+                    sql: """
+                        INSERT INTO rest_timer_event (id, rest_timer_state_id, event_type, timestamp, delta_seconds, source, note)
+                        VALUES (?, ?, 'completed', ?, NULL, 'auto', NULL)
+                        """,
+                    arguments: [UUID().uuidString, id, nowStr]
+                )
+            }
+        }
+    }
+
     public func adjustRunningTimer(sessionId: String, deltaSeconds: Int) throws {
         guard deltaSeconds != 0 else { return }
         let now = ISO8601UTC.string(from: Date())

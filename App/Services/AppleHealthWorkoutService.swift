@@ -2,6 +2,17 @@ import Combine
 import Foundation
 import HealthKit
 
+public struct HeartRateSamplePoint: Hashable, Identifiable, Sendable {
+    public var id: Date { date }
+    public let date: Date
+    public let bpm: Double
+
+    public init(date: Date, bpm: Double) {
+        self.date = date
+        self.bpm = bpm
+    }
+}
+
 /// Bridges active Loggy sessions to Apple Health: traditional strength `HKWorkout` (Exercise ring / Fitness),
 /// estimated active energy (Move ring), and live heart rate from whatever writes HR to HealthKit (usually Apple Watch).
 /// Consumer AirPods do not expose heart rate to HealthKit.
@@ -17,11 +28,14 @@ final class AppleHealthWorkoutService: ObservableObject {
     private var sessionStart: Date?
     private var heartAnchor: HKQueryAnchor?
     private var heartQuery: HKAnchoredObjectQuery?
+    private var liveEnergyTimer: AnyCancellable?
 
     private let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
     private let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
 
     @Published private(set) var latestHeartRateBpm: Int?
+    /// Merged HealthKit cumulative active energy for the current workout window (efficient 30s poll).
+    @Published private(set) var cumulativeActiveEnergyHealthKitKcal: Double?
     @Published private(set) var isHealthDataAvailable: Bool
     @Published private(set) var syncWorkoutsToHealthEnabled: Bool
 
@@ -40,7 +54,9 @@ final class AppleHealthWorkoutService: ObservableObject {
         } else {
             discardBuilderOnly()
             stopHeartRateQuery()
+            stopLiveEnergyPolling()
             latestHeartRateBpm = nil
+            cumulativeActiveEnergyHealthKitKcal = nil
         }
     }
 
@@ -50,7 +66,7 @@ final class AppleHealthWorkoutService: ObservableObject {
             HKObjectType.workoutType(),
             energyType,
         ]
-        let toRead: Set<HKObjectType> = [heartRateType]
+        let toRead: Set<HKObjectType> = [heartRateType, energyType]
         do {
             try await store.requestAuthorization(toShare: toShare, read: toRead)
         } catch {
@@ -72,10 +88,21 @@ final class AppleHealthWorkoutService: ObservableObject {
         }
 
         startHeartRateQuery(from: sessionStartedAt)
+        startLiveEnergyPolling()
     }
 
     func activeWorkoutScreenDisappeared() {
         stopHeartRateQuery()
+        stopLiveEnergyPolling()
+    }
+
+    /// MET-based running kcal for the session so far (fallback when HealthKit cumulative is empty).
+    func estimatedSessionEnergyKcalSoFar(sessionStartedAt: Date, now: Date = Date()) -> Double {
+        let hours = max(now.timeIntervalSince(sessionStartedAt) / 3600.0, 1.0 / 3600.0)
+        let bodyMassKg = 75.0
+        let met: Double = 5.0
+        let kcalPerHour = (met * 3.5 * bodyMassKg) / 200.0 * 60.0
+        return kcalPerHour * hours
     }
 
     /// Call after `finishSession` succeeds so `ended_at` exists for the retroactive path.
@@ -85,12 +112,14 @@ final class AppleHealthWorkoutService: ObservableObject {
 
         if attachedSessionId == sessionId, let builder = workoutBuilder, let start = sessionStart {
             stopHeartRateQuery()
+            stopLiveEnergyPolling()
             let end = Date()
             await finishBuilder(builder, start: start, end: end)
             clearAttachment()
             return
         }
 
+        stopLiveEnergyPolling()
         guard let timing = try? workouts.sessionHealthKitTiming(sessionId: sessionId),
               let ended = timing.endedAt
         else { return }
@@ -100,17 +129,47 @@ final class AppleHealthWorkoutService: ObservableObject {
     func onWorkoutDiscarded(sessionId: String) {
         guard attachedSessionId == sessionId else { return }
         stopHeartRateQuery()
+        stopLiveEnergyPolling()
         workoutBuilder?.discardWorkout()
         clearAttachment()
+    }
+
+    /// Heart rate samples from Health for the session’s `started_at`…`ended_at` window (empty if unavailable or denied).
+    func heartRateSamplesBpm(sessionId: String) async -> [HeartRateSamplePoint] {
+        guard isHealthDataAvailable else { return [] }
+        guard let timing = try? workouts.sessionHealthKitTiming(sessionId: sessionId) else { return [] }
+        let end = timing.endedAt ?? Date()
+        guard timing.startedAt < end else { return [] }
+        guard store.authorizationStatus(for: heartRateType) == .sharingAuthorized else { return [] }
+
+        return await withCheckedContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: timing.startedAt, end: end, options: .strictStartDate)
+            let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+            let query = HKSampleQuery(
+                sampleType: heartRateType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [sort]
+            ) { _, samples, _ in
+                let out: [HeartRateSamplePoint] = (samples as? [HKQuantitySample] ?? []).map { sample in
+                    let bpm = sample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
+                    return HeartRateSamplePoint(date: sample.startDate, bpm: bpm)
+                }
+                continuation.resume(returning: out)
+            }
+            store.execute(query)
+        }
     }
 
     // MARK: - Private
 
     private func clearAttachment() {
+        stopLiveEnergyPolling()
         workoutBuilder = nil
         attachedSessionId = nil
         sessionStart = nil
         heartAnchor = nil
+        cumulativeActiveEnergyHealthKitKcal = nil
     }
 
     private func discardBuilderOnly() {
@@ -141,7 +200,7 @@ final class AppleHealthWorkoutService: ObservableObject {
     }
 
     private func finishBuilder(_ builder: HKWorkoutBuilder, start: Date, end: Date) async {
-        let energy = estimatedActiveEnergySample(start: start, end: end)
+        let energy = Self.makeEstimatedActiveEnergySample(energyType: energyType, start: start, end: end)
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             builder.add([energy]) { _, _ in
                 builder.endCollection(withEnd: end) { _, _ in
@@ -158,6 +217,7 @@ final class AppleHealthWorkoutService: ObservableObject {
         configuration.activityType = .traditionalStrengthTraining
         configuration.locationType = .indoor
         let builder = HKWorkoutBuilder(healthStore: store, configuration: configuration, device: .local())
+        let energyQuantityType = energyType
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             builder.beginCollection(withStart: startedAt) { success, _ in
                 guard success else {
@@ -165,7 +225,11 @@ final class AppleHealthWorkoutService: ObservableObject {
                     cont.resume()
                     return
                 }
-                let energy = self.estimatedActiveEnergySample(start: startedAt, end: endedAt)
+                let energy = Self.makeEstimatedActiveEnergySample(
+                    energyType: energyQuantityType,
+                    start: startedAt,
+                    end: endedAt
+                )
                 builder.add([energy]) { _, _ in
                     builder.endCollection(withEnd: endedAt) { _, _ in
                         builder.finishWorkout { _, _ in
@@ -178,7 +242,8 @@ final class AppleHealthWorkoutService: ObservableObject {
     }
 
     /// Rough Move-ring contribution for strength training (MET-based, default 75 kg). Apple Fitness may still adjust totals.
-    private func estimatedActiveEnergySample(start: Date, end: Date) -> HKQuantitySample {
+    /// `nonisolated` so `HKWorkoutBuilder` completion handlers can call it off the main actor.
+    private nonisolated static func makeEstimatedActiveEnergySample(energyType: HKQuantityType, start: Date, end: Date) -> HKQuantitySample {
         let hours = max(end.timeIntervalSince(start) / 3600.0, 1.0 / 3600.0)
         let bodyMassKg = 75.0
         let met: Double = 5.0
@@ -234,5 +299,46 @@ final class AppleHealthWorkoutService: ObservableObject {
             let bpm = q.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
             latestHeartRateBpm = Int(round(bpm))
         }
+    }
+
+    private func startLiveEnergyPolling() {
+        stopLiveEnergyPolling()
+        guard let start = sessionStart else { return }
+        guard store.authorizationStatus(for: energyType) != .sharingDenied else { return }
+
+        refreshCumulativeActiveEnergy(start: start)
+
+        liveEnergyTimer = Timer.publish(every: 30, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                guard let self, let s = self.sessionStart else { return }
+                self.refreshCumulativeActiveEnergy(start: s)
+            }
+    }
+
+    private func stopLiveEnergyPolling() {
+        liveEnergyTimer?.cancel()
+        liveEnergyTimer = nil
+    }
+
+    private func refreshCumulativeActiveEnergy(start: Date) {
+        let end = Date()
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let query = HKStatisticsQuery(
+            quantityType: energyType,
+            quantitySamplePredicate: predicate,
+            options: .cumulativeSum
+        ) { [weak self] _, statistics, _ in
+            guard let self else { return }
+            let kcal = statistics?.sumQuantity()?.doubleValue(for: HKUnit.kilocalorie())
+            Task { @MainActor in
+                if let kcal, kcal > 0.05 {
+                    self.cumulativeActiveEnergyHealthKitKcal = kcal
+                } else {
+                    self.cumulativeActiveEnergyHealthKitKcal = nil
+                }
+            }
+        }
+        store.execute(query)
     }
 }

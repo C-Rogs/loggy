@@ -22,7 +22,7 @@ final class CoachService: @unchecked Sendable {
         let payload = """
         {"reason":"rep_dropoff","previous_reps":\(previousReps),"current_reps":\(currentReps),"drop_ratio":\(drop)}
         """
-        try? coach.insertRecommendation(
+        _ = try? coach.insertRecommendation(
             scope: .intraSession,
             workoutSessionId: workoutSessionId,
             workoutSessionExerciseId: workoutSessionExerciseId,

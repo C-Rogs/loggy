@@ -10,6 +10,7 @@ struct LoggyApp: App {
                 if let env = environment.value {
                     RootView()
                         .environmentObject(env)
+                        .onOpenURL { env.handleWorkoutLiveURL($0) }
                 } else {
                     Text("Could not open database.")
                         .padding()

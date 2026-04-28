@@ -1,0 +1,78 @@
+import Foundation
+
+/// Canonical names use Hevy-style lowercase + equipment suffixes so CSV imports and picker search align.
+enum HevyStyleExerciseCatalog {
+    struct Row: Sendable {
+        let canonical: String
+        let display: String
+        let mode: ExerciseMode
+    }
+
+    /// Superset of common Hevy library moves; includes `Reference/hevy_export_header_sample.csv` (“Squat (Barbell)”) and typical templates.
+    static let rows: [Row] = [
+        Row(canonical: "squat (barbell)", display: "Squat (Barbell)", mode: .weightReps),
+        Row(canonical: "front squat (barbell)", display: "Front Squat (Barbell)", mode: .weightReps),
+        Row(canonical: "bench press (barbell)", display: "Bench Press (Barbell)", mode: .weightReps),
+        Row(canonical: "deadlift (barbell)", display: "Deadlift (Barbell)", mode: .weightReps),
+        Row(canonical: "romanian deadlift (barbell)", display: "Romanian Deadlift (Barbell)", mode: .weightReps),
+        Row(canonical: "overhead press (barbell)", display: "Overhead Press (Barbell)", mode: .weightReps),
+        Row(canonical: "hip thrust (barbell)", display: "Hip Thrust (Barbell)", mode: .weightReps),
+        Row(canonical: "bent over row (barbell)", display: "Bent Over Row (Barbell)", mode: .weightReps),
+        Row(canonical: "incline bench press (barbell)", display: "Incline Bench Press (Barbell)", mode: .weightReps),
+        Row(canonical: "decline bench press (barbell)", display: "Decline Bench Press (Barbell)", mode: .weightReps),
+        Row(canonical: "sumo deadlift (barbell)", display: "Sumo Deadlift (Barbell)", mode: .weightReps),
+        Row(canonical: "rack pull (barbell)", display: "Rack Pull (Barbell)", mode: .weightReps),
+        Row(canonical: "shrugs (barbell)", display: "Shrugs (Barbell)", mode: .weightReps),
+        Row(canonical: "curl (barbell)", display: "Curl (Barbell)", mode: .weightReps),
+        Row(canonical: "skullcrusher (barbell)", display: "Skullcrusher (Barbell)", mode: .weightReps),
+        Row(canonical: "bench press (dumbbell)", display: "Bench Press (Dumbbell)", mode: .weightReps),
+        Row(canonical: "incline bench press (dumbbell)", display: "Incline Bench Press (Dumbbell)", mode: .weightReps),
+        Row(canonical: "shoulder press (dumbbell)", display: "Shoulder Press (Dumbbell)", mode: .weightReps),
+        Row(canonical: "lateral raise (dumbbell)", display: "Lateral Raise (Dumbbell)", mode: .weightReps),
+        Row(canonical: "rear delt fly (dumbbell)", display: "Rear Delt Fly (Dumbbell)", mode: .weightReps),
+        Row(canonical: "chest fly (dumbbell)", display: "Chest Fly (Dumbbell)", mode: .weightReps),
+        Row(canonical: "row (dumbbell)", display: "Row (Dumbbell)", mode: .weightReps),
+        Row(canonical: "romanian deadlift (dumbbell)", display: "Romanian Deadlift (Dumbbell)", mode: .weightReps),
+        Row(canonical: "goblet squat (dumbbell)", display: "Goblet Squat (Dumbbell)", mode: .weightReps),
+        Row(canonical: "lunges (dumbbell)", display: "Lunges (Dumbbell)", mode: .weightReps),
+        Row(canonical: "bulgarian split squat (dumbbell)", display: "Bulgarian Split Squat (Dumbbell)", mode: .weightReps),
+        Row(canonical: "curl (dumbbell)", display: "Curl (Dumbbell)", mode: .weightReps),
+        Row(canonical: "hammer curl (dumbbell)", display: "Hammer Curl (Dumbbell)", mode: .weightReps),
+        Row(canonical: "tricep kickback (dumbbell)", display: "Tricep Kickback (Dumbbell)", mode: .weightReps),
+        Row(canonical: "leg press", display: "Leg Press", mode: .weightReps),
+        Row(canonical: "hack squat", display: "Hack Squat", mode: .weightReps),
+        Row(canonical: "leg extension", display: "Leg Extension", mode: .weightReps),
+        Row(canonical: "leg curl", display: "Leg Curl", mode: .weightReps),
+        Row(canonical: "calf press on leg press", display: "Calf Press on Leg Press", mode: .weightReps),
+        Row(canonical: "standing calf raise", display: "Standing Calf Raise", mode: .weightReps),
+        Row(canonical: "seated calf raise", display: "Seated Calf Raise", mode: .weightReps),
+        Row(canonical: "lat pulldown (cable)", display: "Lat Pulldown (Cable)", mode: .weightReps),
+        Row(canonical: "seated cable row", display: "Seated Cable Row", mode: .weightReps),
+        Row(canonical: "cable crossover", display: "Cable Crossover", mode: .weightReps),
+        Row(canonical: "tricep pushdown (cable)", display: "Tricep Pushdown (Cable)", mode: .weightReps),
+        Row(canonical: "face pull (cable)", display: "Face Pull (Cable)", mode: .weightReps),
+        Row(canonical: "curl (cable)", display: "Curl (Cable)", mode: .weightReps),
+        Row(canonical: "pull up", display: "Pull Up", mode: .bodyweightReps),
+        Row(canonical: "chin up", display: "Chin Up", mode: .bodyweightReps),
+        Row(canonical: "push up", display: "Push Up", mode: .bodyweightReps),
+        Row(canonical: "dip", display: "Dip", mode: .bodyweightReps),
+        Row(canonical: "hanging leg raise", display: "Hanging Leg Raise", mode: .bodyweightReps),
+        Row(canonical: "plank", display: "Plank", mode: .duration),
+        Row(canonical: "treadmill run", display: "Treadmill Run", mode: .distanceDuration),
+        Row(canonical: "rowing machine", display: "Rowing Machine", mode: .distanceDuration),
+        Row(canonical: "assault bike", display: "Assault Bike", mode: .distanceDuration),
+        Row(canonical: "pec deck", display: "Pec Deck", mode: .weightReps),
+        Row(canonical: "chest press (machine)", display: "Chest Press (Machine)", mode: .weightReps),
+        Row(canonical: "shoulder press (machine)", display: "Shoulder Press (Machine)", mode: .weightReps),
+        Row(canonical: "lat pulldown (machine)", display: "Lat Pulldown (Machine)", mode: .weightReps),
+        Row(canonical: "iso-lateral row (machine)", display: "Iso-Lateral Row (Machine)", mode: .weightReps),
+        Row(canonical: "hip abduction (machine)", display: "Hip Abduction (Machine)", mode: .weightReps),
+        Row(canonical: "hip adduction (machine)", display: "Hip Adduction (Machine)", mode: .weightReps),
+        Row(canonical: "smith machine squat", display: "Smith Machine Squat", mode: .weightReps),
+        Row(canonical: "smith machine bench press", display: "Smith Machine Bench Press", mode: .weightReps),
+        Row(canonical: "arnold press (dumbbell)", display: "Arnold Press (Dumbbell)", mode: .weightReps),
+        Row(canonical: "concentration curl (dumbbell)", display: "Concentration Curl (Dumbbell)", mode: .weightReps),
+        Row(canonical: "wrist curl (barbell)", display: "Wrist Curl (Barbell)", mode: .weightReps),
+        Row(canonical: "farmers walk (dumbbell)", display: "Farmers Walk (Dumbbell)", mode: .distanceDuration),
+    ]
+}

@@ -35,6 +35,20 @@
                ReferencedContainer = "container:Loggy.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A1F0E1D2C3B4A59697868690C"
+               BuildableName = "LoggyTests.xctest"
+               BlueprintName = "LoggyTests"
+               ReferencedContainer = "container:Loggy.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -53,6 +67,16 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A1F0E1D2C3B4A59697868690C"
+               BuildableName = "LoggyTests.xctest"
+               BlueprintName = "LoggyTests"
+               ReferencedContainer = "container:Loggy.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

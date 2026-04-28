@@ -42,6 +42,7 @@ struct ExercisePickerSheet: View {
                         List(vm.exercises) { ex in
                             Button(ex.displayName) {
                                 if case let .single(onPick) = mode {
+                                    LoggyFeedback.primaryActionTap()
                                     onPick(ex.id)
                                     dismiss()
                                 }
@@ -63,6 +64,7 @@ struct ExercisePickerSheet: View {
                                     selectedIds.remove(ex.id)
                                 } else {
                                     selectedIds.insert(ex.id)
+                                    LoggyFeedback.listSelectionTap()
                                 }
                             }
                         }
@@ -86,6 +88,7 @@ struct ExercisePickerSheet: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Add (\(selectedIds.count))") {
                             if case let .multi(onPickMany) = mode {
+                                LoggyFeedback.primaryActionTap()
                                 onPickMany(Array(selectedIds))
                                 dismiss()
                             }

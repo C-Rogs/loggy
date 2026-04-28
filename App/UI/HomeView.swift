@@ -23,6 +23,7 @@ struct HomeView: View {
     @State private var exportDocument: CSVExportDocument?
     @State private var showExport = false
     @State private var exportError: String?
+    @State private var showActiveWorkoutBlockedAlert = false
 
     private var appearance: AppAppearance {
         AppAppearance(rawValue: appearanceRaw) ?? .system
@@ -43,18 +44,33 @@ struct HomeView: View {
                         }
                         .padding(.vertical, 4)
                     }
-                    .listRowBackground(Color.clear)
+                    .listRowBackground(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(
+                                LoggyTheme.isOLEDDarkCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme)
+                                    ? Color.green.opacity(0.18)
+                                    : Color.green.opacity(0.12)
+                            )
+                    )
                 }
 
                 Section {
                     Button {
-                        prepareCoachStart()
-                        showCoachStart = true
+                        if home.activeSummary != nil {
+                            showActiveWorkoutBlockedAlert = true
+                        } else {
+                            prepareCoachStart()
+                            showCoachStart = true
+                        }
                     } label: {
                         Label("Coach & start workout", systemImage: "sparkles")
                             .font(.headline)
                     }
-                    .disabled(home.activeSummary != nil)
+                    .help(
+                        home.activeSummary != nil
+                            ? "Finish or discard the active workout before starting another."
+                            : "Suggest a title and start an empty workout."
+                    )
 
                     Text("Coach suggests a session title only—you add exercises after starting.")
                         .font(.caption)
@@ -120,6 +136,8 @@ struct HomeView: View {
                 case let .active(id):
                     ActiveWorkoutView(sessionId: id, env: env)
                 case let .history(id):
+                    WorkoutSessionAnalysisView(homePath: $path, sessionId: id)
+                case let .editor(id):
                     ActiveWorkoutView(sessionId: id, env: env)
                 }
             }
@@ -159,11 +177,12 @@ struct HomeView: View {
                 NavigationStack {
                     Form {
                         Section("Appearance") {
-                            Picker("Theme", selection: $appearanceRaw) {
+                            Picker("", selection: $appearanceRaw) {
                                 ForEach(AppAppearance.allCases) { mode in
                                     Text(mode.title).tag(mode.rawValue)
                                 }
                             }
+                            .labelsHidden()
                             .pickerStyle(.inline)
                         }
                         Section("Apple Health") {
@@ -174,7 +193,7 @@ struct HomeView: View {
                             Button("Allow Health access…") {
                                 Task { await appleHealth.requestAuthorization() }
                             }
-                            Text("Saves strength-training workouts plus a rough active-energy estimate for Activity rings. BPM shows when Health has samples (usually from Apple Watch). Fitness Training Load is computed by Apple from your Health data, not inside Loggy.")
+                            Text("Saves strength-training workouts plus a rough active-energy estimate for Activity rings. BPM and post-workout charts read from Health (usually written by Apple Watch). A separate watchOS app is optional; HealthKit is the supported path for wrist heart rate on iPhone.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -287,6 +306,11 @@ struct HomeView: View {
             .overlay {
                 if isImporting { ProgressView("Importing…").padding().background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12)) }
             }
+            .alert("Workout in progress", isPresented: $showActiveWorkoutBlockedAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("You already have a workout in progress. Continue it from above, or finish or discard it from the workout screen.")
+            }
             .onAppear {
                 try? home.refresh(env: env)
             }
@@ -301,6 +325,7 @@ struct HomeView: View {
         guard home.activeSummary == nil else { return }
         let title = coachTitleDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         if let id = try? env.workouts.createEmptyActiveSession(title: title.isEmpty ? nil : title) {
+            LoggyFeedback.primaryActionTap()
             showCoachStart = false
             path.append(.active(id))
         }
@@ -317,7 +342,3 @@ struct HomeView: View {
     }
 }
 
-private enum HomeRoute: Hashable {
-    case active(String)
-    case history(String)
-}

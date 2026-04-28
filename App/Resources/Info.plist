@@ -20,13 +20,26 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.loggy.app.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>loggy</string>
+			</array>
+		</dict>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Loggy reads heart rate from Apple Health so it can show your current BPM during a workout when your Apple Watch or other accessories record it.</string>
+	<string>Loggy reads heart rate and active energy from Apple Health so it can show your current BPM and live calories burned during a workout when your Apple Watch or other accessories record them.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Loggy saves completed strength workouts and estimated active energy to Apple Health so they can count toward your Activity rings and Fitness summaries.</string>
 	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

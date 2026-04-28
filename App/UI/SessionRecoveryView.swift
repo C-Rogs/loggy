@@ -21,6 +21,7 @@ struct SessionRecoveryView: View {
 
                 VStack(spacing: 12) {
                     Button("Resume") {
+                        LoggyFeedback.primaryActionTap()
                         try? env.workouts.touchActiveState(sessionId: sessionId)
                         onDone()
                         dismiss()
@@ -29,6 +30,7 @@ struct SessionRecoveryView: View {
 
                     Button("Finish now") {
                         try? env.workouts.finishSession(sessionId: sessionId)
+                        LoggyFeedback.workoutFinishedSaved()
                         Task { @MainActor in
                             await env.appleHealth.onWorkoutFinished(sessionId: sessionId)
                             await env.liveActivity.end()
@@ -41,6 +43,7 @@ struct SessionRecoveryView: View {
                     Button("Discard", role: .destructive) {
                         env.appleHealth.onWorkoutDiscarded(sessionId: sessionId)
                         try? env.workouts.discardSession(sessionId: sessionId)
+                        LoggyFeedback.workoutDiscarded()
                         Task { @MainActor in await env.liveActivity.end() }
                         onDone()
                         dismiss()

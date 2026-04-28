@@ -30,6 +30,7 @@ public protocol WorkoutSessionRepositoryProtocol: Sendable {
     ) throws
     func updateSetType(setId: String, setType: SetType) throws
     func completeSet(sessionId: String, sessionExerciseId: String, setId: String) throws
+    func uncompleteSet(sessionId: String, sessionExerciseId: String, setId: String) throws
     func deleteSet(setId: String) throws
     func updateSessionExerciseNotes(sessionExerciseId: String, notes: String?) throws
     func updateTargetRest(sessionExerciseId: String, seconds: Int?) throws
@@ -51,6 +52,8 @@ public protocol RestTimerRepositoryProtocol: Sendable {
     func skipTimer(timerId: String) throws
     /// Shifts the running timer’s `ends_at` by `deltaSeconds` (negative shortens rest). No-op if none running.
     func adjustRunningTimer(sessionId: String, deltaSeconds: Int) throws
+    /// Marks any `running` timer whose `ends_at` is in the past as `completed`.
+    func completeExpiredRunningTimersIfNeeded(sessionId: String) throws
 }
 
 public struct RestTimerSnapshot: Hashable, Sendable {
@@ -64,6 +67,8 @@ public struct RestTimerSnapshot: Hashable, Sendable {
 public protocol TemplateRepositoryProtocol: Sendable {
     func listTemplates() throws -> [WorkoutTemplateSummary]
     func createTemplate(name: String) throws -> String
+    /// Clones a **completed** session’s exercises and set counts into a new template.
+    func createTemplate(fromSessionId sessionId: String) throws -> String
     func deleteTemplate(id: String) throws
     func addExerciseToTemplate(templateId: String, exerciseId: String) throws
     func listTemplateExercises(templateId: String) throws -> [ExerciseSummary]
