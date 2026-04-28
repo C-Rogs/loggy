@@ -114,12 +114,12 @@ enum SampleHistorySeeder {
                 try db.execute(
                     sql: """
                         INSERT INTO set_entry (
-                            id, workout_session_exercise_id, set_index, set_type, status,
+                            id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
                             weight_kg, reps, distance_km, duration_seconds, rpe,
                             completed_at, created_at, updated_at
-                        ) VALUES (?, ?, ?, 'normal', 'completed', ?, ?, NULL, NULL, NULL, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, 'completed', ?, ?, NULL, NULL, NULL, ?, ?, ?)
                         """,
-                    arguments: [setId, wseId, s, baseW, reps, completed, now, now]
+                    arguments: [setId, wseId, eid, s, SetType.normal.rawValue, baseW, reps, completed, now, now]
                 )
             }
         }

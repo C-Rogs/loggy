@@ -18,7 +18,7 @@ enum PreviousValueMatcher {
                 FROM set_entry se
                 JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                 JOIN workout_session ws ON ws.id = wse.workout_session_id
-                WHERE wse.exercise_id = ?
+                WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
                   AND se.status = 'completed'
                   AND se.deleted_at IS NULL
                   AND wse.deleted_at IS NULL

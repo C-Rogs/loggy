@@ -171,13 +171,13 @@ final class HevyCSVImporter: Sendable {
                         try db.execute(
                             sql: """
                                 INSERT INTO set_entry (
-                                    id, workout_session_exercise_id, set_index, set_type, status,
+                                    id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
                                     weight_kg, reps, distance_km, duration_seconds, rpe,
                                     completed_at, created_at, updated_at
-                                ) VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?)
+                                ) VALUES (?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?)
                             """,
                             arguments: [
-                                setId, wseId, setIndex, setType,
+                                setId, wseId, exerciseId, setIndex, setType,
                                 weight, reps, dkm, dur, rpe,
                                 endedAt ?? startedAt, now, now
                             ]

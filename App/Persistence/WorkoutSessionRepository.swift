@@ -130,11 +130,11 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                     try db.execute(
                         sql: """
                             INSERT INTO set_entry (
-                                id, workout_session_exercise_id, set_index, set_type, status,
+                                id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
                                 created_at, updated_at
-                            ) VALUES (?, ?, ?, ?, 'planned', ?, ?)
+                            ) VALUES (?, ?, ?, ?, ?, 'planned', ?, ?)
                         """,
-                        arguments: [setId, wseId, idx, setType.rawValue, now, now]
+                        arguments: [setId, wseId, exerciseId, idx, setType.rawValue, now, now]
                     )
                 }
             }
@@ -167,7 +167,7 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                 let setRows = try Row.fetchAll(
                     db,
                     sql: """
-                        SELECT id, set_index, set_type, status, weight_kg, reps, distance_km, duration_seconds, rpe, completed_at
+                        SELECT id, set_index, set_type, status, weight_kg, reps, distance_km, duration_seconds, rpe, completed_at, logged_exercise_id
                         FROM set_entry
                         WHERE workout_session_exercise_id = ? AND deleted_at IS NULL
                         ORDER BY set_index ASC
@@ -179,9 +179,10 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                     let setType = SetType(rawValue: sr["set_type"]) ?? .normal
                     let status = SetStatus(rawValue: sr["status"]) ?? .planned
                     let completedAt: Date? = (sr["completed_at"] as String?).flatMap(ISO8601UTC.date(from:))
+                    let prevExerciseId: String = (sr["logged_exercise_id"] as String?) ?? exerciseId
                     let prev = try PreviousValueMatcher.previousDisplay(
                         db: db,
-                        exerciseId: exerciseId,
+                        exerciseId: prevExerciseId,
                         excludingSessionId: sessionId,
                         setType: setType,
                         setIndex: sr["set_index"],
@@ -378,15 +379,73 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                 try db.execute(
                     sql: """
                         INSERT INTO set_entry (
-                            id, workout_session_exercise_id, set_index, set_type, status,
+                            id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
                             weight_kg, reps, distance_km, duration_seconds,
                             created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, 'planned', ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, 'planned', ?, ?, ?, ?, ?, ?)
                         """,
-                    arguments: [setId, wseId, idx, s.setType, s.weightKg, s.reps, s.distanceKm, s.durationSeconds, now, now]
+                    arguments: [setId, wseId, exerciseId, idx, s.setType, s.weightKg, s.reps, s.distanceKm, s.durationSeconds, now, now]
                 )
             }
         }
+    }
+
+    /// Swaps the canonical exercise for an in-session slot while keeping the same `workout_session_exercise` row and set rows.
+    /// Requires the new exercise to use the same `exercise_mode` as the slot so existing set payloads stay valid.
+    public func replaceSessionExercise(sessionId: String, sessionExerciseId: String, newExerciseId: String) throws {
+        let now = ISO8601UTC.string(from: Date())
+        try pool.write { db in
+            guard let wseRow = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT exercise_mode FROM workout_session_exercise
+                    WHERE id = ? AND workout_session_id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [sessionExerciseId, sessionId]
+            ) else { throw RepositoryError.notFound }
+
+            let slotMode: String = wseRow["exercise_mode"]
+
+            guard let newRow = try Row.fetchOne(
+                db,
+                sql: "SELECT exercise_mode FROM exercise WHERE id = ? AND deleted_at IS NULL",
+                arguments: [newExerciseId]
+            ) else { throw RepositoryError.notFound }
+
+            let newMode: String = newRow["exercise_mode"]
+            guard newMode == slotMode else { throw RepositoryError.invalidExerciseReplacement }
+
+            try db.execute(
+                sql: """
+                    UPDATE workout_session_exercise
+                    SET exercise_id = ?, updated_at = ?
+                    WHERE id = ? AND workout_session_id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [newExerciseId, now, sessionExerciseId, sessionId]
+            )
+
+            // Planned / skipped sets belong to the new exercise; clear stale payloads from the old lift.
+            try db.execute(
+                sql: """
+                    UPDATE set_entry
+                    SET logged_exercise_id = ?,
+                        weight_kg = NULL,
+                        reps = NULL,
+                        distance_km = NULL,
+                        duration_seconds = NULL,
+                        rpe = NULL,
+                        rir = NULL,
+                        updated_at = ?
+                    WHERE workout_session_exercise_id = ?
+                      AND deleted_at IS NULL
+                      AND status != 'completed'
+                    """,
+                arguments: [newExerciseId, now, sessionExerciseId]
+            )
+        }
+        try WorkoutTotalsService().recomputeCaches(pool: pool, sessionId: sessionId)
+        try PRService().recomputeForSession(pool: pool, sessionId: sessionId)
+        try ExerciseHistoryService().rebuildSnapshotsForSession(pool: pool, sessionId: sessionId)
     }
 
     public func removeSessionExercise(sessionId: String, sessionExerciseId: String) throws {
@@ -489,16 +548,22 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                 dur = row?["duration_seconds"]
             }
 
+            let slotExerciseId: String = try String.fetchOne(
+                db,
+                sql: "SELECT exercise_id FROM workout_session_exercise WHERE id = ? AND deleted_at IS NULL",
+                arguments: [sessionExerciseId]
+            ) ?? ""
+
             let setId = UUID().uuidString
             try db.execute(
                 sql: """
                     INSERT INTO set_entry (
-                        id, workout_session_exercise_id, set_index, set_type, status,
+                        id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
                         weight_kg, reps, distance_km, duration_seconds,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, 'planned', ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, 'planned', ?, ?, ?, ?, ?, ?)
                 """,
-                arguments: [setId, sessionExerciseId, nextIndex, setType, weight, reps, dist, dur, now, now]
+                arguments: [setId, sessionExerciseId, slotExerciseId, nextIndex, setType, weight, reps, dist, dur, now, now]
             )
         }
     }
@@ -568,10 +633,14 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
             try db.execute(
                 sql: """
                     UPDATE set_entry
-                    SET status = 'completed', completed_at = ?, updated_at = ?
+                    SET logged_exercise_id = COALESCE(
+                            logged_exercise_id,
+                            (SELECT exercise_id FROM workout_session_exercise WHERE id = ?)
+                        ),
+                        status = 'completed', completed_at = ?, updated_at = ?
                     WHERE id = ? AND workout_session_exercise_id = ?
                 """,
-                arguments: [now, now, setId, sessionExerciseId]
+                arguments: [sessionExerciseId, now, now, setId, sessionExerciseId]
             )
 
             if !wasCompleted, isLiveSession {
@@ -888,7 +957,7 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                     FROM set_entry se
                     JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                     JOIN workout_session ws ON ws.id = wse.workout_session_id
-                    WHERE wse.exercise_id = ?
+                    WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
                       AND se.status = 'completed'
                       AND se.completed_at IS NOT NULL
                       AND se.deleted_at IS NULL AND wse.deleted_at IS NULL AND ws.deleted_at IS NULL
@@ -938,6 +1007,8 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
 
 enum RepositoryError: Error {
     case notFound
+    /// New exercise `exercise_mode` does not match the slot being replaced (set rows stay typed by mode).
+    case invalidExerciseReplacement
 }
 
 enum ActiveWorkoutStateRepository {

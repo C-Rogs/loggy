@@ -13,11 +13,21 @@ final class ExerciseHistoryService: Sendable {
             let exerciseIds = try String.fetchAll(
                 db,
                 sql: """
-                    SELECT DISTINCT wse.exercise_id
-                    FROM workout_session_exercise wse
-                    WHERE wse.workout_session_id = ? AND wse.deleted_at IS NULL
+                    SELECT DISTINCT eid FROM (
+                        SELECT DISTINCT COALESCE(se.logged_exercise_id, wse.exercise_id) AS eid
+                        FROM set_entry se
+                        JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
+                        WHERE wse.workout_session_id = ?
+                          AND se.status = 'completed'
+                          AND se.deleted_at IS NULL
+                          AND wse.deleted_at IS NULL
+                        UNION
+                        SELECT wse.exercise_id AS eid
+                        FROM workout_session_exercise wse
+                        WHERE wse.workout_session_id = ? AND wse.deleted_at IS NULL
+                    )
                 """,
-                arguments: [sessionId]
+                arguments: [sessionId, sessionId]
             )
 
             let now = ISO8601UTC.string(from: Date())
@@ -30,7 +40,7 @@ final class ExerciseHistoryService: Sendable {
                         FROM set_entry se
                         JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                         JOIN workout_session ws ON ws.id = wse.workout_session_id
-                        WHERE wse.exercise_id = ?
+                        WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
                           AND se.status = 'completed'
                           AND se.deleted_at IS NULL
                           AND wse.deleted_at IS NULL
@@ -60,7 +70,7 @@ final class ExerciseHistoryService: Sendable {
                         FROM set_entry se
                         JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                         JOIN workout_session ws ON ws.id = wse.workout_session_id
-                        WHERE wse.exercise_id = ?
+                        WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
                           AND se.status = 'completed'
                           AND se.weight_kg IS NOT NULL
                           AND se.deleted_at IS NULL
@@ -78,7 +88,7 @@ final class ExerciseHistoryService: Sendable {
                         FROM set_entry se
                         JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                         JOIN workout_session ws ON ws.id = wse.workout_session_id
-                        WHERE wse.exercise_id = ?
+                        WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
                           AND se.status = 'completed'
                           AND se.deleted_at IS NULL
                           AND wse.deleted_at IS NULL
@@ -95,7 +105,7 @@ final class ExerciseHistoryService: Sendable {
                         FROM set_entry se
                         JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                         JOIN workout_session ws ON ws.id = wse.workout_session_id
-                        WHERE wse.exercise_id = ?
+                        WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
                           AND se.status = 'completed'
                           AND se.deleted_at IS NULL
                           AND wse.deleted_at IS NULL

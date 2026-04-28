@@ -36,7 +36,7 @@ public final class LoggyCSVExporter: Sendable {
                         se.completed_at AS cat
                     FROM workout_session ws
                     JOIN workout_session_exercise wse ON wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
-                    JOIN exercise e ON e.id = wse.exercise_id
+                    JOIN exercise e ON e.id = COALESCE(se.logged_exercise_id, wse.exercise_id)
                     JOIN set_entry se ON se.workout_session_exercise_id = wse.id AND se.deleted_at IS NULL
                     WHERE ws.status = 'completed' AND ws.deleted_at IS NULL
                     ORDER BY ws.started_at ASC, wse.display_order ASC, se.set_index ASC

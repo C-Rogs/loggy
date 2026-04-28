@@ -5,6 +5,13 @@ private struct ExerciseHowToTarget: Identifiable, Hashable {
     let id: String
 }
 
+private struct ReplaceExerciseTarget: Identifiable, Hashable {
+    var id: String { sessionExerciseId }
+    let sessionExerciseId: String
+    let currentExerciseId: String
+    let exerciseMode: ExerciseMode
+}
+
 struct ActiveWorkoutView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var appleHealth: AppleHealthWorkoutService
@@ -25,6 +32,7 @@ struct ActiveWorkoutView: View {
     @State private var restTargetPickerDraftSeconds: Int = 90
     @State private var notesSheetExerciseId: String?
     @State private var notesSheetDraft: String = ""
+    @State private var replaceExerciseTarget: ReplaceExerciseTarget?
 
     init(sessionId: String, env: AppEnvironment) {
         _vm = StateObject(wrappedValue: ActiveWorkoutViewModel(sessionId: sessionId, env: env))
@@ -243,6 +251,17 @@ struct ActiveWorkoutView: View {
             ExerciseHowToSheet(exerciseId: target.id)
                 .environmentObject(env)
         }
+        .sheet(item: $replaceExerciseTarget) { target in
+            ReplaceExerciseSheet(
+                sessionExerciseId: target.sessionExerciseId,
+                currentExerciseId: target.currentExerciseId,
+                exerciseMode: target.exerciseMode,
+                onPick: { newId in
+                    vm.replaceSessionExercise(sessionExerciseId: target.sessionExerciseId, newExerciseId: newId)
+                }
+            )
+            .environmentObject(env)
+        }
         .sheet(isPresented: $showFinishSheet) {
             FinishWorkoutSummarySheet(
                 title: vm.sessionTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Workout" : vm.sessionTitle,
@@ -448,6 +467,16 @@ struct ActiveWorkoutView: View {
                         Label("Move down", systemImage: "arrow.down")
                     }
                     .disabled(index >= vm.exercises.count - 1)
+
+                    Button {
+                        replaceExerciseTarget = ReplaceExerciseTarget(
+                            sessionExerciseId: card.id,
+                            currentExerciseId: card.exerciseId,
+                            exerciseMode: card.exerciseMode
+                        )
+                    } label: {
+                        Label("Replace exercise…", systemImage: "arrow.triangle.2.circlepath")
+                    }
 
                     Divider()
 

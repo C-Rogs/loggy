@@ -4,6 +4,8 @@ import GRDB
 public protocol ExerciseRepositoryProtocol: Sendable {
     func allExercises() throws -> [ExerciseSummary]
     func searchExercises(query: String) throws -> [ExerciseSummary]
+    /// Same `exercise_mode` as the anchor, ordered for swap UI (muscle family first when inferable).
+    func replacementCandidates(forExerciseId: String, limit: Int) throws -> [ExerciseSummary]
     func createCustomExercise(displayName: String, mode: ExerciseMode) throws -> String
     func addAlias(exerciseId: String, alias: String) throws
     func resolveExerciseId(importedTitle: String) throws -> String?
@@ -17,6 +19,7 @@ public protocol WorkoutSessionRepositoryProtocol: Sendable {
     func startSessionFromTemplate(templateId: String, title: String?) throws -> String
     func sessionExercises(sessionId: String) throws -> [SessionExerciseCard]
     func addExercise(sessionId: String, exerciseId: String) throws
+    func replaceSessionExercise(sessionId: String, sessionExerciseId: String, newExerciseId: String) throws
     func removeSessionExercise(sessionId: String, sessionExerciseId: String) throws
     func reorderExercises(sessionId: String, orderedExerciseRowIds: [String]) throws
     func addSet(sessionExerciseId: String, cloneFromSetId: String?) throws

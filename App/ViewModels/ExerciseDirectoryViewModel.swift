@@ -9,6 +9,16 @@ enum ExercisePickerModeFilter: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Picker segment matching a session slot’s log type (used when replacing an exercise).
+    static func forLockedExerciseMode(_ mode: ExerciseMode) -> ExercisePickerModeFilter {
+        switch mode {
+        case .weightReps: return .weightReps
+        case .bodyweightReps: return .bodyweightReps
+        case .duration: return .duration
+        case .distanceDuration: return .distanceDuration
+        }
+    }
+
     var exerciseMode: ExerciseMode? {
         switch self {
         case .all: nil

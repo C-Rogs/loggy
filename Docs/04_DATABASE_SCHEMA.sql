@@ -79,6 +79,7 @@ ON workout_session_exercise(workout_session_id, display_order);
 CREATE TABLE IF NOT EXISTS set_entry (
     id TEXT PRIMARY KEY,
     workout_session_exercise_id TEXT NOT NULL REFERENCES workout_session_exercise(id) ON DELETE CASCADE,
+    logged_exercise_id TEXT REFERENCES exercise(id),
     set_index INTEGER NOT NULL,
     set_type TEXT NOT NULL CHECK (set_type IN ('warmup', 'normal', 'drop_set', 'failure', 'assisted', 'bodyweight', 'timed', 'distance')),
     status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'completed', 'skipped')),

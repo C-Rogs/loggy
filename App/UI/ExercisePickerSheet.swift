@@ -15,13 +15,17 @@ struct ExercisePickerSheet: View {
     }
 
     private let mode: Mode
+    /// When set, the segmented mode control is fixed to this log type (e.g. replace-exercise slot).
+    private let lockedExerciseMode: ExerciseMode?
 
-    init(onPick: @escaping (String) -> Void) {
+    init(onPick: @escaping (String) -> Void, lockedExerciseMode: ExerciseMode? = nil) {
         mode = .single(onPick: onPick)
+        self.lockedExerciseMode = lockedExerciseMode
     }
 
     init(onPickMany: @escaping ([String]) -> Void) {
         mode = .multi(onPickMany: onPickMany)
+        lockedExerciseMode = nil
     }
 
     var body: some View {
@@ -33,6 +37,7 @@ struct ExercisePickerSheet: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .disabled(lockedExerciseMode != nil)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
 
@@ -97,7 +102,12 @@ struct ExercisePickerSheet: View {
                     }
                 }
             }
-            .task { try? vm.refresh(env: env) }
+            .task {
+                if let m = lockedExerciseMode {
+                    vm.modeFilter = ExercisePickerModeFilter.forLockedExerciseMode(m)
+                }
+                try? vm.refresh(env: env)
+            }
             .onChange(of: vm.query) { _, _ in
                 try? vm.refresh(env: env)
             }

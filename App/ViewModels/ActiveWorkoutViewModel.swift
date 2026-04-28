@@ -318,6 +318,19 @@ final class ActiveWorkoutViewModel: ObservableObject {
         reload()
     }
 
+    /// Keeps set rows; new exercise must match the slot’s `exercise_mode` (enforced in repository).
+    func replaceSessionExercise(sessionExerciseId: String, newExerciseId: String) {
+        do {
+            try env.workouts.replaceSessionExercise(sessionId: sessionId, sessionExerciseId: sessionExerciseId, newExerciseId: newExerciseId)
+            reload()
+            if sessionStatus == .active {
+                Task { @MainActor in await pushLiveActivity() }
+            }
+        } catch {
+            // UI only offers same-mode replacements; ignore unexpected failures.
+        }
+    }
+
     private func tickSecond() {
         if sessionStatus == .active,
            let started = try? env.database.pool.read({ db in

@@ -127,6 +127,52 @@ struct AppMigrator {
             }
         }
 
+        migrator.registerMigration("set_entry_logged_exercise_v6") { db in
+            let names = try String.fetchAll(db, sql: "SELECT name FROM pragma_table_info('set_entry')")
+            if !names.contains("logged_exercise_id") {
+                try db.execute(
+                    sql: "ALTER TABLE set_entry ADD COLUMN logged_exercise_id TEXT REFERENCES exercise(id)"
+                )
+            }
+            try db.execute(
+                sql: """
+                    UPDATE set_entry SET logged_exercise_id = (
+                        SELECT exercise_id FROM workout_session_exercise wse
+                        WHERE wse.id = set_entry.workout_session_exercise_id
+                    )
+                    WHERE logged_exercise_id IS NULL AND deleted_at IS NULL
+                    """
+            )
+        }
+
+        migrator.registerMigration("exercise_muscles_from_map_v7") { db in
+            let bundle = Bundle(for: MigrationSchemaBundleLocator.self)
+            guard let url = bundle.url(forResource: "exercise_muscle_map", withExtension: "json"),
+                  let data = try? Data(contentsOf: url),
+                  let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else {
+                throw MigrationError("Missing or invalid bundled exercise_muscle_map.json")
+            }
+            let now = ISO8601UTC.string(from: Date())
+            for (canonical, value) in obj {
+                guard let dict = value as? [String: Any],
+                      let primary = dict["primary"] as? String,
+                      let secondaries = dict["secondaries"] as? [Any]
+                else { continue }
+                let secStrings = secondaries.compactMap { $0 as? String }
+                let secData = try JSONSerialization.data(withJSONObject: secStrings)
+                let secStr = String(data: secData, encoding: .utf8) ?? "[]"
+                try db.execute(
+                    sql: """
+                        UPDATE exercise
+                        SET primary_muscle_group = ?, secondary_muscle_groups_json = ?, updated_at = ?
+                        WHERE lower(canonical_name) = lower(?) AND deleted_at IS NULL
+                        """,
+                    arguments: [primary, secStr, now, canonical]
+                )
+            }
+        }
+
         try migrator.migrate(writer)
     }
 }

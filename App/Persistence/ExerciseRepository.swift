@@ -39,6 +39,74 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
         }
     }
 
+    public func replacementCandidates(forExerciseId: String, limit: Int = 40) throws -> [ExerciseSummary] {
+        try pool.read { db in
+            guard let anchor = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT display_name, canonical_name, exercise_mode, primary_muscle_group, secondary_muscle_groups_json
+                    FROM exercise
+                    WHERE id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [forExerciseId]
+            ) else { return [] }
+
+            let display: String = anchor["display_name"]
+            let canonical: String = anchor["canonical_name"]
+            let mode: String = anchor["exercise_mode"]
+            let primary: String? = anchor["primary_muscle_group"]
+            let anchorBucket = ExerciseMuscleBucket.bucket(
+                primaryMuscle: primary,
+                displayName: display,
+                canonicalName: canonical
+            )
+
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id, display_name, exercise_mode, is_custom, canonical_name, primary_muscle_group, secondary_muscle_groups_json
+                    FROM exercise
+                    WHERE deleted_at IS NULL AND id != ? AND exercise_mode = ?
+                    ORDER BY sort_name COLLATE NOCASE ASC
+                    """,
+                arguments: [forExerciseId, mode]
+            )
+
+            var preferred: [ExerciseSummary] = []
+            var other: [ExerciseSummary] = []
+            for row in rows {
+                let secJSON: String = (row["secondary_muscle_groups_json"] as String?) ?? "[]"
+                let cb = ExerciseMuscleBucket.bucket(
+                    primaryMuscle: row["primary_muscle_group"] as String?,
+                    displayName: row["display_name"] as String,
+                    canonicalName: row["canonical_name"] as String
+                )
+                let secHit = ExerciseMuscleBucket.secondaryJSONMatchesBucket(secJSON, bucket: anchorBucket)
+                let summary = ExerciseSummary(
+                    id: row["id"],
+                    displayName: row["display_name"],
+                    exerciseMode: ExerciseMode(rawValue: row["exercise_mode"] as String) ?? .weightReps,
+                    isCustom: (row["is_custom"] as Int?) == 1
+                )
+                if anchorBucket == .unknown {
+                    other.append(summary)
+                } else if cb == anchorBucket || secHit {
+                    preferred.append(summary)
+                } else {
+                    other.append(summary)
+                }
+            }
+
+            var combined: [ExerciseSummary] = []
+            var seen = Set<String>()
+            for s in preferred + other where seen.insert(s.id).inserted {
+                combined.append(s)
+                if combined.count >= limit { break }
+            }
+            return combined
+        }
+    }
+
     public func createCustomExercise(displayName: String, mode: ExerciseMode) throws -> String {
         let id = UUID().uuidString
         let now = ISO8601UTC.string(from: Date())
