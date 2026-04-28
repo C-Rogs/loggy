@@ -60,6 +60,91 @@ public struct ExerciseHowToInfo: Hashable, Sendable {
     public var displayName: String
     public var instructionText: String?
     public var gifURL: String?
+    public var primaryMuscleGroup: String?
+    public var secondaryMuscleGroups: [String]
+
+    public init(
+        id: String,
+        displayName: String,
+        instructionText: String?,
+        gifURL: String?,
+        primaryMuscleGroup: String? = nil,
+        secondaryMuscleGroups: [String] = []
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.instructionText = instructionText
+        self.gifURL = gifURL
+        self.primaryMuscleGroup = primaryMuscleGroup
+        self.secondaryMuscleGroups = secondaryMuscleGroups
+    }
+}
+
+// MARK: - Exercise history (charts)
+
+public enum ExerciseHistoryTimeRange: String, CaseIterable, Identifiable, Sendable {
+    case month
+    case year
+    case allTime
+
+    public var id: String { rawValue }
+
+    /// SQLite `date('now', ?)` second argument, e.g. `-365 days`; `nil` = all time.
+    public var dateFilterArgument: String? {
+        switch self {
+        case .month: return "-120 days"
+        case .year: return "-800 days"
+        case .allTime: return nil
+        }
+    }
+
+    public var title: String {
+        switch self {
+        case .month: return "Month"
+        case .year: return "Year"
+        case .allTime: return "All"
+        }
+    }
+}
+
+public enum ExerciseHistoryMetric: String, CaseIterable, Identifiable, Sendable {
+    case heaviestWeight
+    case estimatedOneRM
+    case bestSetVolume
+    case sessionVolume
+    case totalReps
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .heaviestWeight: return "Heaviest weight"
+        case .estimatedOneRM: return "One Rep Max"
+        case .bestSetVolume: return "Best set volume"
+        case .sessionVolume: return "Session volume"
+        case .totalReps: return "Total reps"
+        }
+    }
+}
+
+public struct ExerciseHistoryBucket: Identifiable, Hashable, Sendable {
+    public var periodKey: String
+    public var sortDate: String
+    public var heaviestWeightKg: Double?
+    public var estimatedOneRMKg: Double?
+    public var bestSetVolumeKg: Double
+    public var bestSessionVolumeKg: Double
+    public var totalReps: Int
+
+    public var id: String { periodKey }
+}
+
+public struct MuscleGroupSetCount: Identifiable, Hashable, Sendable {
+    public var muscleSlug: String
+    public var displayLabel: String
+    public var completedSetCount: Int
+
+    public var id: String { muscleSlug }
 }
 
 public struct WeeklyVolumePoint: Identifiable, Hashable, Sendable {

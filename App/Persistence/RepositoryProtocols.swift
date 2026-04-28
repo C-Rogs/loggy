@@ -48,6 +48,9 @@ public protocol WorkoutSessionRepositoryProtocol: Sendable {
     func syncActiveWorkoutFocus(sessionId: String, sessionExerciseId: String?, setEntryId: String?) throws
     func weeklyCompletedVolumeByWeek(limitWeeks: Int) throws -> [WeeklyVolumePoint]
     func weeklyStatsForExercise(exerciseId: String, limitWeeks: Int) throws -> [ExerciseWeeklyStatPoint]
+    func exerciseHistoryBuckets(exerciseId: String, range: ExerciseHistoryTimeRange) throws -> [ExerciseHistoryBucket]
+    /// Completed sets attributed to `exercise.primary_muscle_group` (via `logged_exercise_id` when set).
+    func completedSetCountsByPrimaryMuscle(sinceDaysAgo: Int?) throws -> [MuscleGroupSetCount]
 }
 
 public protocol RestTimerRepositoryProtocol: Sendable {

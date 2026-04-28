@@ -248,8 +248,10 @@ struct ActiveWorkoutView: View {
             .environmentObject(env)
         }
         .sheet(item: $howToTarget) { target in
-            ExerciseHowToSheet(exerciseId: target.id)
-                .environmentObject(env)
+            NavigationStack {
+                ExerciseInfoView(exerciseId: target.id, showDismissInToolbar: true)
+                    .environmentObject(env)
+            }
         }
         .sheet(item: $replaceExerciseTarget) { target in
             ReplaceExerciseSheet(

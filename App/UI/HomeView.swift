@@ -106,6 +106,9 @@ struct HomeView: View {
                     NavigationLink("Exercise directory") {
                         ExerciseDirectoryView()
                     }
+                    NavigationLink("Statistics") {
+                        StatisticsHubView()
+                    }
                 } header: {
                     Text("Library")
                 }

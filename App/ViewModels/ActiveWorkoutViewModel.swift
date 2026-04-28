@@ -442,7 +442,11 @@ final class ActiveWorkoutViewModel: ObservableObject {
                     }
                     repsDisp = cur.durationSeconds.map { "\($0)s" } ?? "—"
                 }
-                nextPreview = nextSetPreviewText(card: card, currentSetId: cur.id)
+                nextPreview = LiveActivitySetPreviewFormatter.nextPlannedSetLine(
+                    exercises: exercises,
+                    card: card,
+                    currentSetId: cur.id
+                )
             }
         }
 
@@ -496,22 +500,4 @@ final class ActiveWorkoutViewModel: ObservableObject {
         }
     }
 
-    private func nextSetPreviewText(card: SessionExerciseCard, currentSetId: String) -> String {
-        guard let si = card.sets.firstIndex(where: { $0.id == currentSetId }) else { return "—" }
-        if si + 1 < card.sets.count {
-            let n = card.sets[si + 1]
-            return "Next: \(setTitleForLiveActivity(n))"
-        }
-        if let ci = exercises.firstIndex(where: { $0.id == card.id }), ci + 1 < exercises.count {
-            let nex = exercises[ci + 1]
-            if let fs = nex.sets.first {
-                let short: String = {
-                    let n = nex.displayName
-                    return n.count > 22 ? String(n.prefix(22)) + "…" : n
-                }()
-                return "Next: \(short) · \(setTitleForLiveActivity(fs))"
-            }
-        }
-        return "Next: —"
-    }
 }

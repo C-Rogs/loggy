@@ -75,11 +75,20 @@ private struct WorkoutLiveActivityLockScreenView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .center, spacing: 6) {
-                Image("LoggyLockMark")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 18, height: 18)
-                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                ZStack {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(Color.primary.opacity(colorScheme == .dark ? 0.14 : 0.08))
+                    Image("LoggyLockMark")
+                        .renderingMode(.original)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(2)
+                }
+                .frame(width: 20, height: 20)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
+                )
                 Text(loggyLockAppTitle)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)

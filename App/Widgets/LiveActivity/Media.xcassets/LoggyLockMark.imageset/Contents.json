@@ -6,10 +6,12 @@
       "scale" : "1x"
     },
     {
+      "filename" : "LoggyLockMark@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
+      "filename" : "LoggyLockMark@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

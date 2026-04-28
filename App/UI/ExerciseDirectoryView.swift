@@ -33,13 +33,17 @@ struct ExerciseDirectoryView: View {
 
             Section("Exercises") {
                 ForEach(vm.exercises) { ex in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(ex.displayName).font(.headline)
-                        Text(ex.exerciseMode.rawValue.replacingOccurrences(of: "_", with: " "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    NavigationLink {
+                        ExerciseInfoView(exerciseId: ex.id)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(ex.displayName).font(.headline)
+                            Text(ex.exerciseMode.rawValue.replacingOccurrences(of: "_", with: " "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
                 }
             }
             }

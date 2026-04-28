@@ -155,17 +155,22 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
             guard let row = try Row.fetchOne(
                 db,
                 sql: """
-                    SELECT id, display_name, instruction_text, gif_url
+                    SELECT id, display_name, instruction_text, gif_url,
+                           primary_muscle_group, secondary_muscle_groups_json
                     FROM exercise
                     WHERE id = ? AND deleted_at IS NULL
                 """,
                 arguments: [exerciseId]
             ) else { return nil }
+            let secJSON: String = (row["secondary_muscle_groups_json"] as String?) ?? "[]"
+            let secondary: [String] = (try? JSONDecoder().decode([String].self, from: Data(secJSON.utf8))) ?? []
             return ExerciseHowToInfo(
                 id: row["id"],
                 displayName: row["display_name"],
                 instructionText: row["instruction_text"],
-                gifURL: row["gif_url"]
+                gifURL: row["gif_url"],
+                primaryMuscleGroup: row["primary_muscle_group"],
+                secondaryMuscleGroups: secondary
             )
         }
     }

@@ -978,6 +978,129 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
         }
     }
 
+    public func exerciseHistoryBuckets(exerciseId: String, range: ExerciseHistoryTimeRange) throws -> [ExerciseHistoryBucket] {
+        let periodExpr: String = switch range {
+        case .month: "strftime('%Y-W%W', f.completed_at)"
+        case .year: "strftime('%Y-%m', f.completed_at)"
+        case .allTime: "strftime('%Y', f.completed_at)"
+        }
+        let dateClause: String
+        var arguments: [any DatabaseValueConvertible] = [exerciseId]
+        if let darg = range.dateFilterArgument {
+            dateClause = "AND date(se.completed_at) >= date('now', ?)"
+            arguments.append(darg)
+        } else {
+            dateClause = ""
+        }
+        let sql = """
+            WITH filtered AS (
+                SELECT se.weight_kg, se.reps, se.completed_at, wse.workout_session_id AS sid
+                FROM set_entry se
+                INNER JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id AND wse.deleted_at IS NULL
+                INNER JOIN workout_session ws ON ws.id = wse.workout_session_id AND ws.deleted_at IS NULL
+                WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
+                  AND se.status = 'completed'
+                  AND se.completed_at IS NOT NULL
+                  AND se.deleted_at IS NULL
+                  AND ws.status = 'completed'
+                  \(dateClause)
+            ),
+            per_set AS (
+                SELECT \(periodExpr) AS period_key,
+                       f.completed_at,
+                       f.weight_kg,
+                       f.reps,
+                       COALESCE(f.weight_kg, 0) * COALESCE(CAST(f.reps AS REAL), 0) AS set_vol,
+                       f.sid
+                FROM filtered f
+            ),
+            bucket_agg AS (
+                SELECT period_key,
+                       MIN(completed_at) AS sort_ts,
+                       MAX(weight_kg) AS heaviest,
+                       MAX(CASE WHEN weight_kg > 0 AND reps >= 1 AND reps < 37
+                           THEN weight_kg * (36.0 / (37.0 - CAST(reps AS REAL))) END) AS e1rm,
+                       MAX(set_vol) AS best_set_vol,
+                       SUM(COALESCE(reps, 0)) AS total_reps
+                FROM per_set
+                GROUP BY period_key
+            ),
+            per_session_volume AS (
+                SELECT period_key, sid, SUM(set_vol) AS session_total
+                FROM per_set
+                GROUP BY period_key, sid
+            ),
+            peak_session_volume AS (
+                SELECT period_key, MAX(session_total) AS best_session_vol
+                FROM per_session_volume
+                GROUP BY period_key
+            )
+            SELECT bucket_agg.period_key,
+                   strftime('%Y-%m-%d', bucket_agg.sort_ts) AS sort_date,
+                   bucket_agg.heaviest,
+                   bucket_agg.e1rm,
+                   bucket_agg.best_set_vol,
+                   bucket_agg.total_reps,
+                   COALESCE(peak_session_volume.best_session_vol, 0) AS best_session_vol
+            FROM bucket_agg
+            LEFT JOIN peak_session_volume USING (period_key)
+            ORDER BY bucket_agg.sort_ts ASC
+            """
+        return try pool.read { db in
+            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
+            return rows.map { row in
+                ExerciseHistoryBucket(
+                    periodKey: row["period_key"],
+                    sortDate: row["sort_date"],
+                    heaviestWeightKg: row["heaviest"],
+                    estimatedOneRMKg: row["e1rm"],
+                    bestSetVolumeKg: row["best_set_vol"] as Double? ?? 0,
+                    bestSessionVolumeKg: row["best_session_vol"] as Double? ?? 0,
+                    totalReps: (row["total_reps"] as Int64?).map(Int.init) ?? (row["total_reps"] as Int?) ?? 0
+                )
+            }
+        }
+    }
+
+    public func completedSetCountsByPrimaryMuscle(sinceDaysAgo: Int?) throws -> [MuscleGroupSetCount] {
+        let dateClause: String
+        var arguments: [any DatabaseValueConvertible] = []
+        if let days = sinceDaysAgo {
+            dateClause = "AND date(se.completed_at) >= date('now', ?)"
+            arguments.append("-\(days) days")
+        } else {
+            dateClause = ""
+        }
+        let sql = """
+            SELECT e.primary_muscle_group AS slug,
+                   COUNT(*) AS cnt
+            FROM set_entry se
+            INNER JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id AND wse.deleted_at IS NULL
+            INNER JOIN workout_session ws ON ws.id = wse.workout_session_id AND ws.deleted_at IS NULL
+            INNER JOIN exercise e ON e.id = COALESCE(se.logged_exercise_id, wse.exercise_id) AND e.deleted_at IS NULL
+            WHERE se.status = 'completed'
+              AND se.deleted_at IS NULL
+              AND ws.status = 'completed'
+              AND e.primary_muscle_group IS NOT NULL
+              AND length(trim(e.primary_muscle_group)) > 0
+              \(dateClause)
+            GROUP BY e.primary_muscle_group
+            ORDER BY cnt DESC
+            """
+        return try pool.read { db in
+            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
+            return rows.compactMap { row -> MuscleGroupSetCount? in
+                guard let slug: String = row["slug"], !slug.isEmpty else { return nil }
+                let cnt = (row["cnt"] as Int64?).map(Int.init) ?? (row["cnt"] as Int?) ?? 0
+                return MuscleGroupSetCount(
+                    muscleSlug: slug,
+                    displayLabel: MuscleDisplayName.forStoredSlug(slug),
+                    completedSetCount: cnt
+                )
+            }
+        }
+    }
+
     private static func mapListItem(_ row: Row) -> WorkoutListItem? {
         guard let started = ISO8601UTC.date(from: row["started_at"]) else { return nil }
         let ended: Date? = (row["ended_at"] as String?).flatMap(ISO8601UTC.date(from:))
