@@ -12,6 +12,7 @@ struct HomeView: View {
     @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
 
     @AppStorage("loggyAppearance") private var appearanceRaw: String = AppAppearance.system.rawValue
+    @AppStorage("loggyDismissedHomeGettingStarted") private var dismissedGettingStarted = false
 
     @State private var path: [HomeRoute] = []
     @State private var importError: String?
@@ -35,9 +36,24 @@ struct HomeView: View {
         AppAppearance(rawValue: appearanceRaw) ?? .system
     }
 
+    /// First-run hints until the user completes a workout or dismisses the banner.
+    private var showGettingStartedBanner: Bool {
+        !dismissedGettingStarted && home.completed.isEmpty && home.activeSummary == nil
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             List {
+                if showGettingStartedBanner {
+                    Section {
+                        HomeGettingStartedBanner(onDismiss: { dismissedGettingStarted = true })
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                            .listRowBackground(Color.clear)
+                    } header: {
+                        Text("Getting started")
+                    }
+                }
+
                 if healthRecovery.recoveryInsightsEnabled {
                     Section {
                         ReadinessHeroView(
@@ -92,13 +108,37 @@ struct HomeView: View {
                             : "Suggest a title and start an empty workout."
                     )
 
-                    Text("Coach suggests a session title only—you add exercises after starting.")
+                    Text(
+                        "Coach suggests a workout title (and optional readiness from Apple Health). You add exercises next—there’s no auto-generated program."
+                    )
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } header: {
                     Text("Start")
                 }
                 .listRowBackground(Color.clear)
+
+                if !healthRecovery.recoveryInsightsEnabled {
+                    Section {
+                        Toggle(
+                            "Show recovery insights",
+                            isOn: Binding(
+                                get: { healthRecovery.recoveryInsightsEnabled },
+                                set: { healthRecovery.setRecoveryInsightsEnabled($0) }
+                            )
+                        )
+                        Text(
+                            "Optional summary from sleep and HRV in Apple Health (usually from Apple Watch). Separate from live heart rate during workouts."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        Button("Allow sleep & HRV access…") {
+                            Task { await healthRecovery.requestAuthorization() }
+                        }
+                    } header: {
+                        Text("Recovery")
+                    }
+                }
 
                 if !home.weeklyVolume.isEmpty {
                     Section {
@@ -134,6 +174,12 @@ struct HomeView: View {
                 }
 
                 Section {
+                    if home.completed.isEmpty {
+                        Text("When you finish a workout, it appears here. Start one from Coach below.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .listRowBackground(Color.clear)
+                    }
                     ForEach(home.completed) { item in
                         NavigationLink(value: HomeRoute.history(item.id)) {
                             VStack(alignment: .leading, spacing: 4) {
@@ -230,14 +276,28 @@ struct HomeView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        Section("Data & privacy") {
+                            Text(
+                                "Workouts live in a database on this iPhone only. There’s no Loggy account and no cloud sync yet—everything works offline."
+                            )
+                            .font(.subheadline)
+                            Text(
+                                "Apple Health is optional: you can write workouts and energy, and read sleep/HRV for recovery hints. Export anytime below."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
                         Section("Data") {
                             Button("Import Hevy CSV…") { showImporter = true }
+                            Text("In Hevy, export your backup CSV, then pick that file here to bring history into Loggy.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             Button("Export workouts CSV…") {
                                 exportCSV()
                             }
                         }
                         Section("About") {
-                            Text("Export is a Loggy-native CSV of completed sessions and sets.")
+                            Text("Export is a Loggy-native CSV of completed sessions and sets for spreadsheets or backup.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -281,7 +341,7 @@ struct HomeView: View {
                         }
                         Section {
                             TextField("Workout title", text: $coachTitleDraft)
-                            Text("You can edit the title before starting. The workout starts empty.")
+                            Text("Edit the title if you like. The session starts with no exercises—you’ll add them from the workout screen.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -413,6 +473,37 @@ struct HomeView: View {
         } catch {
             exportError = String(describing: error)
         }
+    }
+}
+
+// MARK: - Getting started (first-run hints)
+
+private struct HomeGettingStartedBanner: View {
+    let onDismiss: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("1. Use Coach & start workout to open an empty session.")
+                Text("2. Add exercises from the workout screen.")
+                Text("3. Log sets in each row; tap the checkmark to complete a set. The rest timer runs next.")
+            }
+            .font(.subheadline)
+            .foregroundStyle(.primary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Button("Got it", action: onDismiss)
+                .buttonStyle(.borderedProminent)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(LoggyTheme.elevatedGroupedCard(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
+        )
     }
 }
 

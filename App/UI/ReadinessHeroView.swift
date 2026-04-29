@@ -200,7 +200,9 @@ struct ReadinessLearnMoreSheet: View {
                         .font(.body)
                     Text("HRV here means SDNN—the same metric stored in Health. We compare a recent sample to your typical range over about two weeks.")
                         .font(.body)
-                    Text("This is guidance only—not medical advice. Live BPM during workouts still appears only when a device writes heart rate to Health during training.")
+                    Text("This is not a forecast of performance and not a machine-learning model—just transparent rules so the coach can set expectations on Home.")
+                        .font(.body)
+                    Text("This is guidance only—not medical advice. It does not replace your own judgment or a care team. Live BPM during workouts still appears only when a device writes heart rate to Health during training.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
