@@ -27,6 +27,10 @@ struct LoggyApp: App {
                         .padding(.horizontal)
                     }
                     .padding()
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(
+                        "Loggy couldn’t open its database. Try freeing storage, restarting the device, or reinstalling the app."
+                    )
                 }
             }
         }

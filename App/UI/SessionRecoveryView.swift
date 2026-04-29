@@ -30,6 +30,12 @@ struct SessionRecoveryView: View {
                                 .fill(.ultraThinMaterial)
                         }
 
+                        Text("Logged sets stay on this iPhone. Resume keeps training; Finish saves to Past workouts; Discard deletes this session.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: 520, alignment: .leading)
+                            .padding(.horizontal, 20)
+
                         VStack(spacing: 12) {
                             Button {
                                 LoggyFeedback.primaryActionTap()

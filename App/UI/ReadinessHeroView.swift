@@ -21,6 +21,7 @@ struct ReadinessHeroView: View {
             if isLoading {
                 HStack(spacing: 10) {
                     ProgressView()
+                        .accessibilityLabel("Loading readiness from Apple Health")
                     Text("Loading readiness…")
                         .font(compact ? .caption : .subheadline)
                         .foregroundStyle(.secondary)
@@ -31,6 +32,7 @@ struct ReadinessHeroView: View {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(cardFillStyle)
                 )
+                .accessibilityElement(children: .combine)
             } else if let insight {
                 readinessCard(insight)
             }
@@ -136,6 +138,7 @@ struct ReadinessHeroView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     private func accentColor(for band: ReadinessBand) -> Color {

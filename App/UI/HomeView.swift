@@ -113,6 +113,19 @@ struct HomeView: View {
                     )
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    Button {
+                        startEmptyWorkoutQuick()
+                    } label: {
+                        Text("Start empty workout")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(home.activeSummary != nil)
+                    Text("Same as Coach, without the sheet—opens an empty session so you can train immediately.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 } header: {
                     Text("Start")
                 }
@@ -150,6 +163,7 @@ struct HomeView: View {
                             .foregroundStyle(.indigo.gradient)
                         }
                         .frame(height: 200)
+                        .accessibilityLabel("Completed training volume by calendar week")
                         Text("Completed workout volume by calendar week (last ~4 months).")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -171,6 +185,10 @@ struct HomeView: View {
                     }
                 } header: {
                     Text("Library")
+                } footer: {
+                    Text("Templates save repeatable routines. Exercise directory lists everything you can log. Statistics summarize trends.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section {
@@ -219,11 +237,13 @@ struct HomeView: View {
                         } label: {
                             Image(systemName: "gearshape")
                         }
+                        .accessibilityLabel("Settings")
                         Button {
                             try? home.refresh(env: env)
                         } label: {
                             Image(systemName: "arrow.clockwise")
                         }
+                        .accessibilityLabel("Refresh home")
                     }
                 }
             }
@@ -414,7 +434,21 @@ struct HomeView: View {
                 Button("OK", role: .cancel) { exportError = nil }
             } message: { Text(exportError ?? "") }
             .overlay {
-                if isImporting { ProgressView("Importing…").padding().background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12)) }
+                if isImporting {
+                    VStack(spacing: 10) {
+                        ProgressView()
+                            .accessibilityLabel("Importing workouts")
+                        Text("Importing…")
+                            .font(.subheadline.weight(.medium))
+                        Text("Large Hevy exports can take a few seconds.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(20)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .accessibilityElement(children: .combine)
+                }
             }
             .alert("Workout in progress", isPresented: $showActiveWorkoutBlockedAlert) {
                 Button("OK", role: .cancel) {}
@@ -465,6 +499,18 @@ struct HomeView: View {
         }
     }
 
+    /// Opens an active session immediately (no coach sheet)—same as Coach with default title behavior.
+    private func startEmptyWorkoutQuick() {
+        guard home.activeSummary == nil else {
+            showActiveWorkoutBlockedAlert = true
+            return
+        }
+        if let id = try? env.workouts.createEmptyActiveSession(title: nil) {
+            LoggyFeedback.primaryActionTap()
+            path.append(.active(id))
+        }
+    }
+
     private func exportCSV() {
         do {
             let data = try env.csvExporter.exportCompletedWorkoutsCSV()
@@ -490,12 +536,14 @@ private struct HomeGettingStartedBanner: View {
                 Text("1. Use Coach & start workout to open an empty session.")
                 Text("2. Add exercises from the workout screen.")
                 Text("3. Log sets in each row; tap the checkmark to complete a set. The rest timer runs next.")
+                Text("Tip: Start empty workout (below) skips the coach sheet when you’re in a hurry.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
             }
             .font(.subheadline)
             .foregroundStyle(.primary)
             .fixedSize(horizontal: false, vertical: true)
-
-            Button("Got it", action: onDismiss)
                 .buttonStyle(.borderedProminent)
         }
         .padding(14)

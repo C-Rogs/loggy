@@ -22,6 +22,11 @@ struct TemplatesView: View {
             }
 
             Section("Templates") {
+                if vm.templates.isEmpty {
+                    Text("No templates yet. Name one above to create it, then add exercises—or log workouts from Coach and organize them here later.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 ForEach(vm.templates) { t in
                     NavigationLink(t.name) {
                         TemplateDetailView(templateId: t.id)
