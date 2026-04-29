@@ -44,6 +44,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
     private var tick: AnyCancellable?
     /// Fires rest-complete feedback once per rest timer when wall clock passes `ends_at` while the row is still `running`.
     private var restCompletedFeedbackTimerId: String?
+    private var liveActivityHealthThrottle: Int = 0
 
     init(sessionId: String, env: AppEnvironment) {
         self.sessionId = sessionId
@@ -61,7 +62,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
 
         if sessionStatus == .active {
             Task { @MainActor in
-                await env.liveActivity.startIfNeeded(sessionId: sessionId)
+                await env.liveActivity.startIfNeeded(sessionId: sessionId, workoutStartedAt: sessionStartedAt)
                 await pushLiveActivity()
             }
         }
@@ -341,12 +342,27 @@ final class ActiveWorkoutViewModel: ObservableObject {
             elapsedSeconds = max(0, Int(Date().timeIntervalSince(d)))
         }
         refreshRest()
-        if sessionStatus == .active {
-            Task { @MainActor in await pushLiveActivity() }
+        // Lock screen elapsed + rest countdown animate in the widget via wall-clock anchors (`workoutStartedAt`, `restEndsAt`).
+        // Push occasionally so HR/kcal stay plausible when Health sync is on.
+        if sessionStatus == .active, env.appleHealth.syncWorkoutsToHealthEnabled {
+            liveActivityHealthThrottle += 1
+            if liveActivityHealthThrottle >= 30 {
+                liveActivityHealthThrottle = 0
+                Task { @MainActor in await pushLiveActivity() }
+            }
         }
     }
 
     private func refreshRest() {
+        let restSigBefore = liveRestSignatureForPush()
+        defer {
+            if sessionStatus == .active {
+                let restSigAfter = liveRestSignatureForPush()
+                if restSigBefore != restSigAfter {
+                    Task { @MainActor in await pushLiveActivity() }
+                }
+            }
+        }
         guard sessionStatus == .active else {
             restRemaining = nil
             restTimerVisual = nil
@@ -379,6 +395,16 @@ final class ActiveWorkoutViewModel: ObservableObject {
         } else {
             restTimerVisual = nil
         }
+    }
+
+    private func liveRestSignatureForPush() -> String {
+        if let v = restTimerVisual {
+            return "w|\(v.timerId)|\(v.endsAt.timeIntervalSince1970)"
+        }
+        if let r = restRemaining {
+            return "rem|\(r)"
+        }
+        return "idle"
     }
 
     private func currentExerciseName() -> String {
@@ -477,6 +503,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
             elapsedSeconds: elapsedSeconds,
             completedSetCount: completedSetCount,
             currentExerciseName: name,
+            workoutStartedAt: sessionStartedAt,
             restRemainingSeconds: restRemInt,
             restEndsAt: restEnd,
             restStartedAt: restTimerVisual?.startedAt,

@@ -7,7 +7,7 @@ final class LiveActivityManager: @unchecked Sendable {
 
     /// Starts a Live Activity for `sessionId`, replacing any existing activity bound to a different session.
     @MainActor
-    func startIfNeeded(sessionId: String) async {
+    func startIfNeeded(sessionId: String, workoutStartedAt: Date?) async {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         if let existing = activity {
             if !LiveActivitySessionBinding.shouldEndBeforeStarting(
@@ -24,6 +24,7 @@ final class LiveActivityManager: @unchecked Sendable {
             elapsedSeconds: 0,
             completedSetCount: 0,
             currentExerciseName: "Workout",
+            workoutStartedAt: workoutStartedAt,
             restRemainingSeconds: nil,
             restEndsAt: nil,
             restStartedAt: nil,
@@ -56,6 +57,7 @@ final class LiveActivityManager: @unchecked Sendable {
             elapsedSeconds: 0,
             completedSetCount: 0,
             currentExerciseName: "Workout",
+            workoutStartedAt: nil,
             restRemainingSeconds: nil,
             restEndsAt: nil,
             restStartedAt: nil,

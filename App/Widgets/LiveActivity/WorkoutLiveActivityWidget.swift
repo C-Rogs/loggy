@@ -32,6 +32,8 @@ struct WorkoutLiveActivityWidget: Widget {
                         .font(.caption2)
                         .fontWeight(.medium)
                         .foregroundStyle(.secondary)
+                } else if let start = context.state.workoutStartedAt {
+                    DynamicIslandElapsedMinutes(startedAt: start)
                 } else {
                     Text("\(context.state.elapsedSeconds / 60)m")
                         .font(.caption2)
@@ -93,10 +95,7 @@ private struct WorkoutLiveActivityLockScreenView: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 8)
-                Text(formatElapsedClock(state.elapsedSeconds))
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+                LockScreenElapsedClock(workoutStartedAt: state.workoutStartedAt, fallbackSeconds: state.elapsedSeconds)
             }
 
             Text(state.currentExerciseName)
@@ -212,11 +211,49 @@ private struct WorkoutLiveActivityLockScreenView: View {
             ? Color.white.opacity(0.12)
             : Color.black.opacity(0.10)
     }
+}
 
-    private func formatElapsedClock(_ seconds: Int) -> String {
+/// Live elapsed time without per-second ActivityKit pushes — mirrors Now Playing’s anchored elapsed playback time (see `workoutStartedAt` in ``WorkoutActivityAttributes/ContentState``).
+private struct LockScreenElapsedClock: View {
+    let workoutStartedAt: Date?
+    let fallbackSeconds: Int
+
+    var body: some View {
+        Group {
+            if let start = workoutStartedAt {
+                TimelineView(.periodic(from: Date(), by: 1.0)) { context in
+                    let sec = max(0, Int(context.date.timeIntervalSince(start)))
+                    Text(formatLockElapsed(sec))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            } else {
+                Text(formatLockElapsed(fallbackSeconds))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+        }
+    }
+
+    private func formatLockElapsed(_ seconds: Int) -> String {
         let m = seconds / 60
         let s = seconds % 60
         return String(format: "%d:%02d", m, s)
+    }
+}
+
+private struct DynamicIslandElapsedMinutes: View {
+    let startedAt: Date
+
+    var body: some View {
+        TimelineView(.periodic(from: Date(), by: 30)) { context in
+            let sec = max(0, Int(context.date.timeIntervalSince(startedAt)))
+            Text("\(sec / 60)m")
+                .font(.caption2)
+                .monospacedDigit()
+        }
     }
 }
 

@@ -4,9 +4,12 @@ import Foundation
 /// Shared between the app and the Live Activity widget extension.
 public struct WorkoutActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
+        /// Snapshot of elapsed time when this payload was built (sets, HR, etc.). Lock screen prefers ``workoutStartedAt`` + `TimelineView` so it stays live without per-second pushes.
         public var elapsedSeconds: Int
         public var completedSetCount: Int
         public var currentExerciseName: String
+        /// Wall-clock session start — widget derives live elapsed with `TimelineView` (same idea as Now Playing’s elapsed + playback rate: anchor time, local interpolation).
+        public var workoutStartedAt: Date?
         public var restRemainingSeconds: Int?
         /// Wall-clock end of active rest; lock screen uses this with `TimelineView` for a stable numeric countdown.
         public var restEndsAt: Date?
@@ -29,6 +32,7 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
             elapsedSeconds: Int,
             completedSetCount: Int,
             currentExerciseName: String,
+            workoutStartedAt: Date? = nil,
             restRemainingSeconds: Int?,
             restEndsAt: Date? = nil,
             restStartedAt: Date? = nil,
@@ -46,6 +50,7 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
             self.elapsedSeconds = elapsedSeconds
             self.completedSetCount = completedSetCount
             self.currentExerciseName = currentExerciseName
+            self.workoutStartedAt = workoutStartedAt
             self.restRemainingSeconds = restRemainingSeconds
             self.restEndsAt = restEndsAt
             self.restStartedAt = restStartedAt
