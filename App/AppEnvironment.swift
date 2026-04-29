@@ -1,9 +1,38 @@
 import Foundation
 import GRDB
 import SwiftUI
+import os.log
+
+extension Logger {
+    static let startup = Logger(subsystem: "com.loggy.app", category: "startup")
+    static let lockScreenAction = Logger(subsystem: "com.loggy.app", category: "lockScreenAction")
+}
 
 @MainActor
 final class AppEnvironment: ObservableObject {
+    /// Set when the main UI successfully constructs an environment; used by `LiveActivityIntent` to avoid a second full DB open.
+    private(set) static var sharedForProcess: AppEnvironment?
+
+    static func registerSharedInstance(_ env: AppEnvironment) {
+        sharedForProcess = env
+    }
+
+    static func clearSharedInstance() {
+        sharedForProcess = nil
+    }
+
+    /// Used by `LiveActivityIntent`: prefer the instance from `LoggyApp`, otherwise bootstrap once (cold process).
+    static func sharedOrCreateForLockScreenAction() -> AppEnvironment? {
+        if let s = sharedForProcess { return s }
+        guard let env = try? AppEnvironment() else {
+            Logger.lockScreenAction.error("Failed to create AppEnvironment for lock-screen / intent action")
+            return nil
+        }
+        registerSharedInstance(env)
+        Logger.lockScreenAction.notice("Bootstrapped AppEnvironment for lock-screen action (no prior shared instance)")
+        return env
+    }
+
     let database: AppDatabase
     let workouts: WorkoutSessionRepository
     let exercises: ExerciseRepository
@@ -19,10 +48,16 @@ final class AppEnvironment: ObservableObject {
     let csvExporter: LoggyCSVExporter
     let appleHealth: AppleHealthWorkoutService
     let healthRecovery: HealthRecoveryService
+    let phoneWatchBridge: PhoneWatchSessionBridge
 
     init() throws {
         let database = try AppDatabase.openShared()
-        try SeedDatabase.seedIfNeeded(pool: database.pool)
+        do {
+            try SeedDatabase.seedIfNeeded(pool: database.pool)
+        } catch {
+            Logger.startup.error("SeedDatabase failed: \(String(describing: error), privacy: .public)")
+            throw error
+        }
         #if DEBUG
         try SampleHistorySeeder.seedIfNeeded(pool: database.pool)
         #endif
@@ -30,8 +65,13 @@ final class AppEnvironment: ObservableObject {
 
         let pool = database.pool
         let workouts = WorkoutSessionRepository(pool: pool)
+        let appleHealth = AppleHealthWorkoutService(workouts: workouts)
+        let phoneWatchBridge = PhoneWatchSessionBridge()
+        appleHealth.phoneWatchBridge = phoneWatchBridge
+
         self.workouts = workouts
-        self.appleHealth = AppleHealthWorkoutService(workouts: workouts)
+        self.appleHealth = appleHealth
+        self.phoneWatchBridge = phoneWatchBridge
         self.healthRecovery = HealthRecoveryService()
         self.exercises = ExerciseRepository(pool: pool)
         self.restTimers = RestTimerRepository(pool: pool)
@@ -44,11 +84,17 @@ final class AppEnvironment: ObservableObject {
         self.nextExerciseSuggestion = NextExerciseSuggestionService(pool: pool)
         self.sessionCoach = SessionCoachService(pool: pool)
         self.csvExporter = LoggyCSVExporter(pool: pool)
+        phoneWatchBridge.activate()
     }
 
-    /// Handles `loggy://workout/live-action?...` from Live Activity links (lock screen).
+    /// Handles `loggy://workout/live-action?...` from URLs (e.g. `onOpenURL`).
     func handleWorkoutLiveURL(_ url: URL) {
         guard let p = LoggyWorkoutDeepLink.parse(url) else { return }
+        handleWorkoutLiveParsed(p)
+    }
+
+    /// Shared by URL open and `LiveActivityIntent` so lock-screen actions can run without launching the app UI.
+    func handleWorkoutLiveParsed(_ p: LoggyWorkoutDeepLink.Parsed) {
         guard let active = try? workouts.activeSessionSummary(), active.sessionId == p.sessionId else { return }
         let sid = p.sessionId
         switch p.op {

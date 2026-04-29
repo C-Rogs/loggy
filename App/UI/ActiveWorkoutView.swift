@@ -163,9 +163,12 @@ struct ActiveWorkoutView: View {
         }
         .overlay {
             if showingActiveRestChrome, let visual = vm.restTimerVisual {
-                RestTimerPerimeterOnly(visual: visual)
-                    .transition(.opacity)
-                    .allowsHitTesting(false)
+                RestTimerPerimeterOnly(
+                    visual: visual,
+                    oledCanvas: LoggyTheme.isOLEDDarkCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme)
+                )
+                .transition(.opacity)
+                .allowsHitTesting(false)
             }
         }
         .overlay(alignment: .bottom) {
@@ -233,8 +236,12 @@ struct ActiveWorkoutView: View {
             }
         }
         .onDisappear {
+            vm.pushWatchIdleSnapshot()
             vm.onDisappear()
             appleHealth.activeWorkoutScreenDisappeared()
+        }
+        .onReceive(appleHealth.objectWillChange) { _ in
+            Task { await vm.refreshLiveActivityIfHealthGlanceChanged() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .loggyActiveWorkoutMutated)) { note in
             guard let sid = note.object as? String, sid == vm.sessionId else { return }
@@ -640,6 +647,7 @@ struct ActiveWorkoutView: View {
 
     private func healthSyncStatusLine(healthOn: Bool) -> some View {
         let bpm = appleHealth.latestHeartRateBpm
+        let heartTip = healthOn ? appleHealth.heartRateAvailabilityTipForLiveActivity() : nil
         let energyText: String? = {
             guard healthOn, let start = vm.sessionStartedAt else { return nil }
             if let hk = appleHealth.cumulativeActiveEnergyHealthKitKcal, hk > 0.5 {
@@ -648,11 +656,12 @@ struct ActiveWorkoutView: View {
             let est = appleHealth.estimatedSessionEnergyKcalSoFar(sessionStartedAt: start)
             return "~\(Int(est)) kcal"
         }()
-        return HStack(alignment: .center, spacing: 6) {
+        return HStack(alignment: .top, spacing: 6) {
             if healthOn {
                 Circle()
                     .fill(Color.green)
                     .frame(width: 6, height: 6)
+                    .padding(.top, 2)
                 Text("Live sync active")
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(.secondary)
@@ -660,32 +669,45 @@ struct ActiveWorkoutView: View {
                 Circle()
                     .fill(Color.secondary.opacity(0.45))
                     .frame(width: 6, height: 6)
+                    .padding(.top, 2)
                 Text("Health sync off")
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(.tertiary)
             }
             Spacer(minLength: 8)
-            if healthOn, bpm != nil || energyText != nil {
-                HStack(spacing: 4) {
-                    if let bpm {
-                        HStack(spacing: 3) {
-                            Image(systemName: "heart.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.red.opacity(0.9))
-                            Text("\(bpm) bpm")
-                                .font(.caption2.monospacedDigit().weight(.medium))
-                                .foregroundStyle(.secondary)
+            if healthOn {
+                VStack(alignment: .trailing, spacing: 4) {
+                    if bpm != nil || energyText != nil {
+                        HStack(spacing: 4) {
+                            if let bpm {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "heart.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(.red.opacity(0.9))
+                                    Text("\(bpm) bpm")
+                                        .font(.caption2.monospacedDigit().weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            if bpm != nil, energyText != nil {
+                                Text("·")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            if let energyText {
+                                Text(energyText)
+                                    .font(.caption2.monospacedDigit().weight(.medium))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
-                    if bpm != nil, energyText != nil {
-                        Text("·")
+                    if bpm == nil, let heartTip {
+                        Text(heartTip)
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
-                    }
-                    if let energyText {
-                        Text(energyText)
-                            .font(.caption2.monospacedDigit().weight(.medium))
-                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -1043,9 +1065,22 @@ private enum RestRingLayout {
 
 private struct RestTimerPerimeterOnly: View {
     let visual: RestTimerVisual
+    /// Matches grouped canvas / OLED workout UI (track reads as neutral on that surface).
+    var oledCanvas: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var trackColor: Color {
+        if oledCanvas {
+            Color.white.opacity(0.14)
+        } else if colorScheme == .dark {
+            Color.white.opacity(0.16)
+        } else {
+            Color.black.opacity(0.11)
+        }
+    }
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.12)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
             let total = max(visual.endsAt.timeIntervalSince(visual.startedAt), 0.001)
             let remainingInterval = max(0, visual.endsAt.timeIntervalSince(timeline.date))
             let progress = CGFloat(min(1, remainingInterval / total))
@@ -1058,7 +1093,7 @@ private struct RestTimerPerimeterOnly: View {
 
                 ZStack {
                     ScreenBorderShape()
-                        .stroke(Color.orange.opacity(0.38), lineWidth: 9)
+                        .stroke(trackColor, lineWidth: 9)
 
                     ScreenBorderShape()
                         .trim(from: 0, to: progress)
@@ -1069,7 +1104,6 @@ private struct RestTimerPerimeterOnly: View {
                             ),
                             style: StrokeStyle(lineWidth: 9, lineCap: .round)
                         )
-                        .animation(.linear(duration: 0.05), value: progress)
                 }
                 .frame(width: screen.width, height: screen.height)
                 .offset(x: offsetX, y: offsetY)

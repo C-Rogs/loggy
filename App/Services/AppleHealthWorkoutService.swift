@@ -15,10 +15,23 @@ public struct HeartRateSamplePoint: Hashable, Identifiable, Sendable {
 
 /// Bridges active Loggy sessions to Apple Health: traditional strength `HKWorkout` (Exercise ring / Fitness),
 /// estimated active energy (Move ring), and live heart rate from whatever writes HR to HealthKit (usually Apple Watch).
+///
+/// **Apple Watch (Option A):** When the paired Watch app acknowledges via Watch Connectivity, it owns the single
+/// persisted ``HKWorkout`` using ``HKLiveWorkoutBuilder`` so HR streams reliably; this service skips the iPhone
+/// ``HKWorkoutBuilder`` in that mode to avoid duplicate strength workouts in Health.
 /// Consumer AirPods do not expose heart rate to HealthKit.
 @MainActor
 final class AppleHealthWorkoutService: ObservableObject {
     static let syncEnabledKey = "loggyAppleHealthWorkoutSync"
+
+    /// Who persists the active-session HealthKit workout (at most one).
+    private enum HealthKitWorkoutWriter: Sendable {
+        case none
+        case phoneBuilder
+        case watchBuilder
+    }
+
+    weak var phoneWatchBridge: PhoneWatchSessionBridge?
 
     private let store = HKHealthStore()
     private let workouts: WorkoutSessionRepository
@@ -29,6 +42,9 @@ final class AppleHealthWorkoutService: ObservableObject {
     private var heartAnchor: HKQueryAnchor?
     private var heartQuery: HKAnchoredObjectQuery?
     private var liveEnergyTimer: AnyCancellable?
+    private var healthKitWriter: HealthKitWorkoutWriter = .none
+    /// Throttles mid-session attempts to move HK workout ownership to Apple Watch when WC becomes reachable.
+    private var lastWatchBuilderHandoffAttempt: Date = .distantPast
 
     private let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
     private let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
@@ -38,6 +54,24 @@ final class AppleHealthWorkoutService: ObservableObject {
     @Published private(set) var cumulativeActiveEnergyHealthKitKcal: Double?
     @Published private(set) var isHealthDataAvailable: Bool
     @Published private(set) var syncWorkoutsToHealthEnabled: Bool
+
+    /// Shown on the lock screen Live Activity and active-workout summary when Health sync is on but no BPM sample has arrived (or read access is blocked).
+    func heartRateAvailabilityTipForLiveActivity() -> String? {
+        guard syncWorkoutsToHealthEnabled, latestHeartRateBpm == nil else { return nil }
+        guard isHealthDataAvailable else {
+            return "Heart rate isn’t available on this device."
+        }
+        switch store.authorizationStatus(for: heartRateType) {
+        case .sharingDenied:
+            return "Allow heart rate for Loggy in the Health app to see live BPM."
+        case .notDetermined:
+            return "Open Loggy to allow heart rate access, then return to your workout."
+        case .sharingAuthorized:
+            return "BPM shows when Apple Watch or another device streams heart rate to Health."
+        @unknown default:
+            return "BPM shows when a device writes heart rate to Health during this session."
+        }
+    }
 
     init(workouts: WorkoutSessionRepository) {
         self.workouts = workouts
@@ -77,18 +111,76 @@ final class AppleHealthWorkoutService: ObservableObject {
     func activeWorkoutScreenAppeared(sessionId: String, sessionStartedAt: Date) {
         guard isHealthDataAvailable, syncWorkoutsToHealthEnabled else { return }
 
+        Task { await requestAuthorization() }
+
         if attachedSessionId != sessionId {
             discardBuilderOnly()
             stopHeartRateQuery()
+            heartAnchor = nil
             attachedSessionId = sessionId
             sessionStart = sessionStartedAt
-            beginWorkoutBuilder(sessionStartedAt: sessionStartedAt)
+            healthKitWriter = .none
+            lastWatchBuilderHandoffAttempt = .distantPast
+            Task { await self.coordinateHealthKitWriter(sessionId: sessionId, sessionStartedAt: sessionStartedAt) }
         } else if sessionStart != sessionStartedAt {
             sessionStart = sessionStartedAt
         }
 
         startHeartRateQuery(from: sessionStartedAt)
         startLiveEnergyPolling()
+    }
+
+    private func coordinateHealthKitWriter(sessionId: String, sessionStartedAt: Date) async {
+        guard store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else {
+            healthKitWriter = .phoneBuilder
+            beginWorkoutBuilder(sessionStartedAt: sessionStartedAt)
+            return
+        }
+        var watchOwns = await phoneWatchBridge?.requestWatchOwnsHealthWorkout(
+            sessionId: sessionId,
+            sessionStartedAt: sessionStartedAt
+        ) ?? false
+        // WatchConnectivity `isReachable` is often false for a few seconds after opening the workout; defer phone
+        // builder briefly so the Watch can own `HKLiveWorkoutBuilder` and HR streams reliably (Option A).
+        if !watchOwns, phoneWatchBridge?.shouldDeferPhoneBuilderForWatchRetry() == true {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            watchOwns = await phoneWatchBridge?.requestWatchOwnsHealthWorkout(
+                sessionId: sessionId,
+                sessionStartedAt: sessionStartedAt
+            ) ?? false
+        }
+        if watchOwns {
+            healthKitWriter = .watchBuilder
+        } else {
+            healthKitWriter = .phoneBuilder
+            beginWorkoutBuilder(sessionStartedAt: sessionStartedAt)
+        }
+    }
+
+    /// If the phone already started `HKWorkoutBuilder` because the Watch was unreachable, retry handoff when WC becomes reachable.
+    func retryHandoffFromPhoneBuilderToWatch(sessionId: String) async {
+        guard syncWorkoutsToHealthEnabled,
+              isHealthDataAvailable,
+              attachedSessionId == sessionId,
+              healthKitWriter == .phoneBuilder,
+              store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized
+        else { return }
+        guard let bridge = phoneWatchBridge else { return }
+        guard Date().timeIntervalSince(lastWatchBuilderHandoffAttempt) >= 12 else { return }
+        lastWatchBuilderHandoffAttempt = Date()
+        let ok = await bridge.requestWatchOwnsHealthWorkout(
+            sessionId: sessionId,
+            sessionStartedAt: sessionStart ?? Date()
+        )
+        guard ok else { return }
+        workoutBuilder?.discardWorkout()
+        workoutBuilder = nil
+        healthKitWriter = .watchBuilder
+        heartAnchor = nil
+        stopHeartRateQuery()
+        if let start = sessionStart {
+            startHeartRateQuery(from: start)
+        }
     }
 
     func activeWorkoutScreenDisappeared() {
@@ -110,6 +202,14 @@ final class AppleHealthWorkoutService: ObservableObject {
         guard isHealthDataAvailable, syncWorkoutsToHealthEnabled else { return }
         guard store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else { return }
 
+        if healthKitWriter == .watchBuilder {
+            stopHeartRateQuery()
+            stopLiveEnergyPolling()
+            await phoneWatchBridge?.requestWatchFinishHealthWorkout(endedAt: Date())
+            clearAttachment()
+            return
+        }
+
         if attachedSessionId == sessionId, let builder = workoutBuilder, let start = sessionStart {
             stopHeartRateQuery()
             stopLiveEnergyPolling()
@@ -128,9 +228,14 @@ final class AppleHealthWorkoutService: ObservableObject {
 
     func onWorkoutDiscarded(sessionId: String) {
         guard attachedSessionId == sessionId else { return }
+        if healthKitWriter == .watchBuilder {
+            Task { await self.phoneWatchBridge?.requestWatchDiscardHealthWorkout() }
+        } else {
+            workoutBuilder?.discardWorkout()
+            workoutBuilder = nil
+        }
         stopHeartRateQuery()
         stopLiveEnergyPolling()
-        workoutBuilder?.discardWorkout()
         clearAttachment()
     }
 
@@ -170,11 +275,13 @@ final class AppleHealthWorkoutService: ObservableObject {
         sessionStart = nil
         heartAnchor = nil
         cumulativeActiveEnergyHealthKitKcal = nil
+        healthKitWriter = .none
     }
 
     private func discardBuilderOnly() {
         workoutBuilder?.discardWorkout()
         workoutBuilder = nil
+        healthKitWriter = .none
     }
 
     private func beginWorkoutBuilder(sessionStartedAt: Date) {

@@ -28,7 +28,8 @@ final class LiveActivityManager: @unchecked Sendable {
             restRemainingSeconds: nil,
             restEndsAt: nil,
             restStartedAt: nil,
-            restProgress: nil
+            restProgress: nil,
+            restAttentionExpiresAt: nil
         )
 
         do {
@@ -61,7 +62,8 @@ final class LiveActivityManager: @unchecked Sendable {
             restRemainingSeconds: nil,
             restEndsAt: nil,
             restStartedAt: nil,
-            restProgress: nil
+            restProgress: nil,
+            restAttentionExpiresAt: nil
         )
         let content = ActivityContent(state: final, staleDate: nil)
         await activity.end(content, dismissalPolicy: .immediate)

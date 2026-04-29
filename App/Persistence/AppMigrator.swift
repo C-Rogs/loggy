@@ -3,13 +3,17 @@ import GRDB
 
 private final class MigrationSchemaBundleLocator: NSObject {}
 
+private func bundledResourceURL(name: String, fileExtension ext: String) -> URL? {
+    Bundle.main.url(forResource: name, withExtension: ext)
+        ?? Bundle(for: MigrationSchemaBundleLocator.self).url(forResource: name, withExtension: ext)
+}
+
 struct AppMigrator {
     func migrate(_ writer: DatabaseWriter) throws {
         var migrator = DatabaseMigrator()
 
         migrator.registerMigration("schema_v1") { db in
-            let bundle = Bundle(for: MigrationSchemaBundleLocator.self)
-            guard let url = bundle.url(forResource: "04_DATABASE_SCHEMA", withExtension: "sql"),
+            guard let url = bundledResourceURL(name: "04_DATABASE_SCHEMA", fileExtension: "sql"),
                   let sql = try? String(contentsOf: url, encoding: .utf8)
             else {
                 throw MigrationError("Missing bundled 04_DATABASE_SCHEMA.sql")
@@ -146,8 +150,7 @@ struct AppMigrator {
         }
 
         migrator.registerMigration("exercise_muscles_from_map_v7") { db in
-            let bundle = Bundle(for: MigrationSchemaBundleLocator.self)
-            guard let url = bundle.url(forResource: "exercise_muscle_map", withExtension: "json"),
+            guard let url = bundledResourceURL(name: "exercise_muscle_map", fileExtension: "json"),
                   let data = try? Data(contentsOf: url),
                   let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
             else {
@@ -177,7 +180,8 @@ struct AppMigrator {
     }
 }
 
-private struct MigrationError: Error {
+private struct MigrationError: LocalizedError {
     let message: String
     init(_ message: String) { self.message = message }
+    var errorDescription: String? { message }
 }

@@ -50,43 +50,33 @@ final class HealthRecoveryService: ObservableObject {
             return ReadinessSnapshot(hadSleepAuthorization: false, hadHRVAuthorization: false)
         }
 
-        let sleepAuth = authorizationAllowed(for: sleepType)
-        let hrvAuth = authorizationAllowed(for: hrvType)
-
+        // Apple intentionally does not expose whether read access was granted for a type (privacy).
+        // `authorizationStatus(for:)` reflects sharing (write) status and is unreliable for read-only types.
+        // The supported approach is to request authorization, then run queries (empty results if denied or no data).
         let now = Date()
         let dayKey = ReadinessNormsStore.dayKey(for: now)
         let sleepWindowStart = now.addingTimeInterval(-40 * 3600)
 
-        let sleepSeconds: TimeInterval? =
-            sleepAuth
-            ? await sumSleepAsleepSeconds(from: sleepWindowStart, to: now)
-            : nil
+        let sleepSeconds = await sumSleepAsleepSeconds(from: sleepWindowStart, to: now)
 
         let baselineStart = now.addingTimeInterval(-14 * 24 * 3600)
         let baselineEnd = now.addingTimeInterval(-36 * 3600)
 
-        let baselineSamples: [Double] =
-            hrvAuth
-            ? await fetchHRVSamples(from: baselineStart, to: baselineEnd)
-            : []
-
-        let recentSamples: [Double] =
-            hrvAuth
-            ? await fetchHRVSamples(from: now.addingTimeInterval(-36 * 3600), to: now)
-            : []
+        let baselineSamples = await fetchHRVSamples(from: baselineStart, to: baselineEnd)
+        let recentSamples = await fetchHRVSamples(from: now.addingTimeInterval(-36 * 3600), to: now)
 
         let median = Self.median(baselineSamples)
         let recent = recentSamples.last
 
         var norms = ReadinessNormsStore.load()
-        if let sec = sleepSeconds, sleepAuth {
+        if sleepSeconds >= 60 {
             ReadinessNormsStore.mergeSleepSample(
                 into: &norms,
                 dayKey: dayKey,
-                hours: sec / 3600.0
+                hours: sleepSeconds / 3600.0
             )
         }
-        if let recent, let med = median, med > 0, hrvAuth {
+        if let recent, let med = median, med > 0 {
             ReadinessNormsStore.mergeHRVRatioSample(
                 into: &norms,
                 dayKey: dayKey,
@@ -99,12 +89,13 @@ final class HealthRecoveryService: ObservableObject {
         let hrvPersonal = ReadinessNormsStore.personalHRVThresholds(from: norms)
 
         return ReadinessSnapshot(
-            sleepDurationSeconds: sleepSeconds,
+            sleepDurationSeconds: sleepSeconds > 0 ? sleepSeconds : nil,
             hrvRecentMS: recent,
             hrvBaselineMedianMS: median,
             hrvBaselineSampleCount: baselineSamples.count,
-            hadSleepAuthorization: sleepAuth,
-            hadHRVAuthorization: hrvAuth,
+            // User opted into recovery reads; HealthKit does not disclose read permission separately.
+            hadSleepAuthorization: true,
+            hadHRVAuthorization: true,
             sleepShortThresholdHours: sleepPersonal?.short,
             sleepSolidThresholdHours: sleepPersonal?.solid,
             hrvLowRatio: hrvPersonal?.low,
@@ -115,11 +106,6 @@ final class HealthRecoveryService: ObservableObject {
     }
 
     // MARK: - Private
-
-    private func authorizationAllowed(for type: HKObjectType) -> Bool {
-        let s = store.authorizationStatus(for: type)
-        return s == .sharingAuthorized
-    }
 
     private func sumSleepAsleepSeconds(from start: Date, to end: Date) async -> TimeInterval {
         await withCheckedContinuation { continuation in

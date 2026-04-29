@@ -17,6 +17,8 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
         public var restStartedAt: Date?
         /// Elapsed fraction of the current rest interval (0…1) for lock-screen progress bar; nil when not resting.
         public var restProgress: Double?
+        /// After natural rest expiry, show a short “time to go” affordance in the Live Activity (widget compares to wall clock locally).
+        public var restAttentionExpiresAt: Date?
 
         public var liveSessionExerciseId: String?
         public var liveSetEntryId: String?
@@ -27,6 +29,8 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
         public var currentRepsDisplay: String
         public var heartBpm: Int?
         public var activeKcalDisplay: String?
+        /// Short hint when Health sync is on but BPM has not appeared yet (or read access is blocked). Keep glanceable.
+        public var heartRateTip: String?
 
         public init(
             elapsedSeconds: Int,
@@ -37,6 +41,7 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
             restEndsAt: Date? = nil,
             restStartedAt: Date? = nil,
             restProgress: Double? = nil,
+            restAttentionExpiresAt: Date? = nil,
             liveSessionExerciseId: String? = nil,
             liveSetEntryId: String? = nil,
             currentSetTitle: String = "",
@@ -45,7 +50,8 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
             currentKgDisplay: String = "—",
             currentRepsDisplay: String = "—",
             heartBpm: Int? = nil,
-            activeKcalDisplay: String? = nil
+            activeKcalDisplay: String? = nil,
+            heartRateTip: String? = nil
         ) {
             self.elapsedSeconds = elapsedSeconds
             self.completedSetCount = completedSetCount
@@ -55,6 +61,7 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
             self.restEndsAt = restEndsAt
             self.restStartedAt = restStartedAt
             self.restProgress = restProgress
+            self.restAttentionExpiresAt = restAttentionExpiresAt
             self.liveSessionExerciseId = liveSessionExerciseId
             self.liveSetEntryId = liveSetEntryId
             self.currentSetTitle = currentSetTitle
@@ -64,6 +71,7 @@ public struct WorkoutActivityAttributes: ActivityAttributes {
             self.currentRepsDisplay = currentRepsDisplay
             self.heartBpm = heartBpm
             self.activeKcalDisplay = activeKcalDisplay
+            self.heartRateTip = heartRateTip
         }
     }
 

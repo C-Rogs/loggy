@@ -13,6 +13,7 @@ struct HomeView: View {
 
     @AppStorage("loggyAppearance") private var appearanceRaw: String = AppAppearance.system.rawValue
     @AppStorage("loggyDismissedHomeGettingStarted") private var dismissedGettingStarted = false
+    @AppStorage("loggyRecoveryOnboardingSeen") private var recoveryOnboardingSeen = false
 
     @State private var path: [HomeRoute] = []
     @State private var importError: String?
@@ -34,6 +35,8 @@ struct HomeView: View {
     @State private var pastWorkoutsSearch = ""
     @State private var importFraction: Double?
     @State private var importStatus = ""
+    @State private var showRecoveryOnboarding = false
+    @State private var recoveryOnboardingToggle = false
 
     private var appearance: AppAppearance {
         AppAppearance(rawValue: appearanceRaw) ?? .system
@@ -145,28 +148,6 @@ struct HomeView: View {
                 }
                 .listRowBackground(Color.clear)
 
-                if !healthRecovery.recoveryInsightsEnabled {
-                    Section {
-                        Toggle(
-                            "Show recovery insights",
-                            isOn: Binding(
-                                get: { healthRecovery.recoveryInsightsEnabled },
-                                set: { healthRecovery.setRecoveryInsightsEnabled($0) }
-                            )
-                        )
-                        Text(
-                            "Optional summary from sleep and HRV in Apple Health (usually from Apple Watch). Separate from live heart rate during workouts."
-                        )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        Button("Allow sleep & HRV access…") {
-                            Task { await healthRecovery.requestAuthorization() }
-                        }
-                    } header: {
-                        Text("Recovery")
-                    }
-                }
-
                 if !home.weeklyVolume.isEmpty {
                     Section {
                         Chart(home.weeklyVolume) { row in
@@ -236,6 +217,10 @@ struct HomeView: View {
                 }
             }
             .searchable(text: $pastWorkoutsSearch, prompt: "Search past workouts")
+            .refreshable {
+                try? home.refresh(env: env)
+                await refreshReadinessHero()
+            }
             .scrollContentBackground(.hidden)
             .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
             .navigationTitle("Loggy")
@@ -252,20 +237,12 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack {
-                        Button {
-                            showSettings = true
-                        } label: {
-                            Image(systemName: "gearshape")
-                        }
-                        .accessibilityLabel("Settings")
-                        Button {
-                            try? home.refresh(env: env)
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                        .accessibilityLabel("Refresh home")
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
                     }
+                    .accessibilityLabel("Settings")
                 }
             }
             .preferredColorScheme(appearance.colorScheme)
@@ -282,6 +259,54 @@ struct HomeView: View {
                     }
                     .presentationDetents([.medium])
                 }
+            }
+            .sheet(isPresented: $showRecoveryOnboarding) {
+                NavigationStack {
+                    Form {
+                        Section {
+                            Text(
+                                "Recovery insights use sleep and heart rate variability from Apple Health—often recorded by Apple Watch. This is separate from saving workouts or reading heart rate during an active session."
+                            )
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            Toggle("Show recovery insights on Home", isOn: $recoveryOnboardingToggle)
+                        }
+                        Section {
+                            Text(
+                                "Apple asks for Sleep and HRV access separately from workout and heart-rate permissions. Allowing “all” on one sheet does not automatically enable every category—you may see a second prompt for Sleep and HRV."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .scrollContentBackground(.hidden)
+                    .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
+                    .navigationTitle("Recovery")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Not now") {
+                                recoveryOnboardingSeen = true
+                                showRecoveryOnboarding = false
+                            }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Continue") {
+                                healthRecovery.setRecoveryInsightsEnabled(recoveryOnboardingToggle)
+                                recoveryOnboardingSeen = true
+                                showRecoveryOnboarding = false
+                                Task { await refreshReadinessHero() }
+                            }
+                            .fontWeight(.semibold)
+                        }
+                    }
+                    .toolbarBackground(
+                        LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+                        for: .navigationBar
+                    )
+                    .toolbarBackground(.visible, for: .navigationBar)
+                }
+                .environment(\.loggyOLEDDarkUserPreference, loggyOLEDDark)
             }
             .sheet(isPresented: $showSettings) {
                 NavigationStack {
@@ -508,6 +533,10 @@ struct HomeView: View {
             }
             .onAppear {
                 try? home.refresh(env: env)
+                if !recoveryOnboardingSeen, healthRecovery.isHealthDataAvailable {
+                    recoveryOnboardingToggle = healthRecovery.recoveryInsightsEnabled
+                    showRecoveryOnboarding = true
+                }
             }
             .task(id: healthRecovery.recoveryInsightsEnabled) {
                 await refreshReadinessHero()

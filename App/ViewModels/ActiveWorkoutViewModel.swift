@@ -45,6 +45,14 @@ final class ActiveWorkoutViewModel: ObservableObject {
     /// Fires rest-complete feedback once per rest timer when wall clock passes `ends_at` while the row is still `running`.
     private var restCompletedFeedbackTimerId: String?
     private var liveActivityHealthThrottle: Int = 0
+    /// Dedupes Live Activity pushes when only `AppleHealthWorkoutService` published properties change.
+    private var lastLiveActivityHealthGlanceSignature: String?
+    /// Shown in Live Activity briefly after rest hits zero (natural completion only).
+    private var restAttentionExpiresAt: Date?
+    private var scheduledRestEndWorkItem: DispatchWorkItem?
+    private var pendingRestNotificationKey: String?
+    private var lastWatchPushAt: Date = .distantPast
+    private var watchHKHandoffRetryTick: Int = 0
 
     init(sessionId: String, env: AppEnvironment) {
         self.sessionId = sessionId
@@ -71,6 +79,22 @@ final class ActiveWorkoutViewModel: ObservableObject {
     func onDisappear() {
         tick?.cancel()
         tick = nil
+    }
+
+    /// Pushes an ActivityKit update when heart rate, energy, or the missing-BPM tip changes (skips if unchanged).
+    func refreshLiveActivityIfHealthGlanceChanged() async {
+        guard sessionStatus == .active, env.appleHealth.syncWorkoutsToHealthEnabled else { return }
+        let sig = liveActivityHealthGlanceSignature()
+        guard sig != lastLiveActivityHealthGlanceSignature else { return }
+        await pushLiveActivity()
+    }
+
+    private func liveActivityHealthGlanceSignature() -> String {
+        let h = env.appleHealth
+        let bpm = h.latestHeartRateBpm.map(String.init) ?? "-"
+        let kcal = h.cumulativeActiveEnergyHealthKitKcal.map { String(format: "%.2f", $0) } ?? "-"
+        let tip = h.heartRateAvailabilityTipForLiveActivity() ?? ""
+        return "\(bpm)|\(kcal)|\(tip)"
     }
 
     func reload() {
@@ -165,6 +189,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
         }
         if sessionStatus == .active {
             Task { @MainActor in await pushLiveActivity() }
+            pushWatchConnectivitySnapshot(force: true)
         }
     }
 
@@ -274,10 +299,16 @@ final class ActiveWorkoutViewModel: ObservableObject {
         do {
             try env.workouts.finishSession(sessionId: sessionId)
             LoggyFeedback.workoutFinishedSaved()
+            cancelScheduledRestCompletion()
+            if let tid = restTimerVisual?.timerId {
+                RestTimerEndNotifier.cancel(timerId: tid)
+            }
             Task { @MainActor in
                 await env.appleHealth.onWorkoutFinished(sessionId: sessionId)
                 await env.liveActivity.end()
             }
+            reload()
+            pushWatchIdleSnapshot()
         } catch {
             // ignore
         }
@@ -287,16 +318,26 @@ final class ActiveWorkoutViewModel: ObservableObject {
         env.appleHealth.onWorkoutDiscarded(sessionId: sessionId)
         try? env.workouts.discardSession(sessionId: sessionId)
         LoggyFeedback.workoutDiscarded()
+        cancelScheduledRestCompletion()
+        if let tid = restTimerVisual?.timerId {
+            RestTimerEndNotifier.cancel(timerId: tid)
+        }
         Task { @MainActor in await env.liveActivity.end() }
+        reload()
     }
 
     func skipRest() {
         guard let snap = try? env.restTimers.activeTimer(for: sessionId) else { return }
+        RestTimerEndNotifier.cancel(timerId: snap.id)
+        cancelScheduledRestCompletion()
+        pendingRestNotificationKey = nil
         try? env.restTimers.skipTimer(timerId: snap.id)
         LoggyFeedback.restSkipped()
         restCompletedFeedbackTimerId = nil
+        restAttentionExpiresAt = nil
         refreshRest()
         Task { @MainActor in await pushLiveActivity() }
+        pushWatchConnectivitySnapshot(force: true)
     }
 
     func adjustRestTimer(by deltaSeconds: Int) {
@@ -351,6 +392,15 @@ final class ActiveWorkoutViewModel: ObservableObject {
                 Task { @MainActor in await pushLiveActivity() }
             }
         }
+        if sessionStatus == .active {
+            pushWatchConnectivitySnapshot(force: false)
+            if env.appleHealth.syncWorkoutsToHealthEnabled {
+                watchHKHandoffRetryTick += 1
+                if watchHKHandoffRetryTick % 12 == 0 {
+                    Task { await env.appleHealth.retryHandoffFromPhoneBuilderToWatch(sessionId: sessionId) }
+                }
+            }
+        }
     }
 
     private func refreshRest() {
@@ -364,14 +414,19 @@ final class ActiveWorkoutViewModel: ObservableObject {
             }
         }
         guard sessionStatus == .active else {
+            cancelScheduledRestCompletion()
+            pendingRestNotificationKey = nil
             restRemaining = nil
             restTimerVisual = nil
             restCompletedFeedbackTimerId = nil
+            restAttentionExpiresAt = nil
             return
         }
         guard let snap = try? env.restTimers.activeTimer(for: sessionId),
               let ends = snap.endsAt
         else {
+            cancelScheduledRestCompletion()
+            pendingRestNotificationKey = nil
             restRemaining = nil
             restTimerVisual = nil
             restCompletedFeedbackTimerId = nil
@@ -379,32 +434,87 @@ final class ActiveWorkoutViewModel: ObservableObject {
         }
         let newRemaining = RestTimerService.remainingSeconds(endsAt: ends)
         if snap.state == .running, (newRemaining ?? 0) <= 0 {
-            if restCompletedFeedbackTimerId != snap.id {
-                restCompletedFeedbackTimerId = snap.id
-                LoggyFeedback.restTimerCompleted()
-            }
-            try? env.restTimers.completeExpiredRunningTimersIfNeeded(sessionId: sessionId)
-            restRemaining = nil
-            restTimerVisual = nil
+            completeNaturalRest(timerId: snap.id)
             return
         }
 
         restRemaining = newRemaining
         if let started = snap.startedAt {
+            restAttentionExpiresAt = nil
             restTimerVisual = RestTimerVisual(timerId: snap.id, startedAt: started, endsAt: ends)
+            if snap.state == .running, (newRemaining ?? 0) > 0 {
+                scheduleRestEndAlarms(snap: snap, endsAt: ends)
+            }
         } else {
+            cancelScheduledRestCompletion()
             restTimerVisual = nil
         }
     }
 
+    private func cancelScheduledRestCompletion() {
+        scheduledRestEndWorkItem?.cancel()
+        scheduledRestEndWorkItem = nil
+    }
+
+    /// Completes a running rest row in the DB, triggers haptics once, and starts the Live Activity “attention” window.
+    private func completeNaturalRest(timerId: String) {
+        if restCompletedFeedbackTimerId != timerId {
+            restCompletedFeedbackTimerId = timerId
+            LoggyFeedback.restTimerCompleted()
+        }
+        RestTimerEndNotifier.cancel(timerId: timerId)
+        cancelScheduledRestCompletion()
+        pendingRestNotificationKey = nil
+        try? env.restTimers.completeExpiredRunningTimersIfNeeded(sessionId: sessionId)
+        restAttentionExpiresAt = Date().addingTimeInterval(14)
+        restRemaining = nil
+        restTimerVisual = nil
+    }
+
+    private func scheduleRestEndAlarms(snap: RestTimerSnapshot, endsAt: Date) {
+        cancelScheduledRestCompletion()
+        guard snap.state == .running else { return }
+
+        let notifyKey = "\(snap.id)|\(endsAt.timeIntervalSince1970)"
+        if pendingRestNotificationKey != notifyKey {
+            pendingRestNotificationKey = notifyKey
+            RestTimerEndNotifier.scheduleIfNeeded(timerId: snap.id, endsAt: endsAt)
+        }
+
+        let interval = endsAt.timeIntervalSinceNow
+        guard interval > 0 else { return }
+
+        let capturedId = snap.id
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            Task { @MainActor in
+                self.scheduledRestEndWorkItem = nil
+                guard self.sessionStatus == .active else { return }
+                guard let cur = try? self.env.restTimers.activeTimer(for: self.sessionId),
+                      cur.id == capturedId,
+                      cur.state == .running,
+                      let end = cur.endsAt,
+                      end <= Date()
+                else { return }
+                self.completeNaturalRest(timerId: capturedId)
+                // Explicit push: `refreshRest` defer does not run on this path (work item is outside `refreshRest`), and the next tick’s defer may see an unchanged signature vs `liveRestSignatureForPush`.
+                Task { @MainActor in await self.pushLiveActivity() }
+            }
+        }
+        scheduledRestEndWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + interval, execute: work)
+    }
+
     private func liveRestSignatureForPush() -> String {
-        if let v = restTimerVisual {
-            return "w|\(v.timerId)|\(v.endsAt.timeIntervalSince1970)"
+        var base = LiveActivityElapsedLogic.restPushSignature(
+            timerId: restTimerVisual?.timerId,
+            restEndsAt: restTimerVisual?.endsAt,
+            legacyRemainingSeconds: restTimerVisual == nil ? restRemaining : nil
+        )
+        if let att = restAttentionExpiresAt {
+            base += "|att|\(att.timeIntervalSince1970)"
         }
-        if let r = restRemaining {
-            return "rem|\(r)"
-        }
-        return "idle"
+        return base
     }
 
     private func currentExerciseName() -> String {
@@ -419,6 +529,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
     private func pushLiveActivity() async {
         guard sessionStatus == .active else { return }
         await env.liveActivity.update(sessionId: sessionId, state: makeLiveActivityContentState())
+        lastLiveActivityHealthGlanceSignature = liveActivityHealthGlanceSignature()
     }
 
     /// Reloads session state and returns Live Activity payload (e.g. after a lock-screen deep link while the workout screen is not mounted).
@@ -503,11 +614,12 @@ final class ActiveWorkoutViewModel: ObservableObject {
             elapsedSeconds: elapsedSeconds,
             completedSetCount: completedSetCount,
             currentExerciseName: name,
-            workoutStartedAt: sessionStartedAt,
+            workoutStartedAt: LiveActivityElapsedLogic.sanitizedWorkoutStartedAt(sessionStartedAt),
             restRemainingSeconds: restRemInt,
             restEndsAt: restEnd,
             restStartedAt: restTimerVisual?.startedAt,
             restProgress: restProgress,
+            restAttentionExpiresAt: restAttentionExpiresAt,
             liveSessionExerciseId: wse,
             liveSetEntryId: setId,
             currentSetTitle: setTitle,
@@ -516,7 +628,10 @@ final class ActiveWorkoutViewModel: ObservableObject {
             currentKgDisplay: kgDisp,
             currentRepsDisplay: repsDisp,
             heartBpm: env.appleHealth.syncWorkoutsToHealthEnabled ? env.appleHealth.latestHeartRateBpm : nil,
-            activeKcalDisplay: kcalDisplay
+            activeKcalDisplay: kcalDisplay,
+            heartRateTip: env.appleHealth.syncWorkoutsToHealthEnabled
+                ? env.appleHealth.heartRateAvailabilityTipForLiveActivity()
+                : nil
         )
     }
 
@@ -525,6 +640,45 @@ final class ActiveWorkoutViewModel: ObservableObject {
         case .warmup: return "W"
         default: return "Set \(set.setIndex + 1)"
         }
+    }
+
+    // MARK: - Apple Watch mirror
+
+    func pushWatchIdleSnapshot() {
+        env.phoneWatchBridge.pushSnapshot(
+            WatchActiveWorkoutSnapshot(
+                sessionId: sessionId,
+                workoutStartedAt: nil,
+                phase: .idle,
+                currentExerciseName: "",
+                completedSetCount: 0,
+                restEndsAt: nil,
+                restStartedAt: nil,
+                healthSyncEnabled: false
+            )
+        )
+    }
+
+    private func makeWatchSnapshot() -> WatchActiveWorkoutSnapshot {
+        WatchActiveWorkoutSnapshot(
+            sessionId: sessionId,
+            workoutStartedAt: sessionStartedAt.map { ISO8601UTC.string(from: $0) },
+            phase: sessionStatus == .active ? .active : .idle,
+            currentExerciseName: currentExerciseName(),
+            completedSetCount: completedSetCount,
+            restEndsAt: restTimerVisual.map { ISO8601UTC.string(from: $0.endsAt) },
+            restStartedAt: restTimerVisual.map { ISO8601UTC.string(from: $0.startedAt) },
+            healthSyncEnabled: env.appleHealth.syncWorkoutsToHealthEnabled
+        )
+    }
+
+    /// ~1 Hz max unless `force` (reload, skip rest, etc.).
+    private func pushWatchConnectivitySnapshot(force: Bool) {
+        guard sessionStatus == .active else { return }
+        let now = Date()
+        if !force, now.timeIntervalSince(lastWatchPushAt) < 0.9 { return }
+        lastWatchPushAt = now
+        env.phoneWatchBridge.pushSnapshot(makeWatchSnapshot())
     }
 
 }
