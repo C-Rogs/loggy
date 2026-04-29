@@ -168,7 +168,7 @@ public final class TemplateRepository: TemplateRepositoryProtocol {
             try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT e.id, e.display_name, e.exercise_mode, e.is_custom
+                    SELECT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group
                     FROM workout_template_exercise te
                     JOIN exercise e ON e.id = te.exercise_id
                     WHERE te.workout_template_id = ? AND te.deleted_at IS NULL
@@ -180,7 +180,8 @@ public final class TemplateRepository: TemplateRepositoryProtocol {
                     id: row["id"],
                     displayName: row["display_name"],
                     exerciseMode: ExerciseMode(rawValue: row["exercise_mode"]) ?? .weightReps,
-                    isCustom: (row["is_custom"] as Int?) == 1
+                    isCustom: (row["is_custom"] as Int?) == 1,
+                    primaryMuscleGroup: row["primary_muscle_group"]
                 )
             }
         }

@@ -13,6 +13,7 @@ struct RootView: View {
     var body: some View {
         HomeView(home: home)
             .environmentObject(env.appleHealth)
+            .environmentObject(env.healthRecovery)
             .environment(\.loggyOLEDDarkUserPreference, loggyOLEDDarkPreference)
     }
 }

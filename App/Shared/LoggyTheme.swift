@@ -59,4 +59,37 @@ enum LoggyTheme {
             ? .black
             : Color(.systemGroupedBackground)
     }
+
+    /// Accent for readiness hero border / glyphs (supports OLED black canvas).
+    static func readinessAccent(
+        for band: ReadinessBand,
+        oledPreference: Bool,
+        colorScheme: ColorScheme
+    ) -> Color {
+        let dim = isOLEDDarkCanvas(oledPreference: oledPreference, colorScheme: colorScheme)
+        switch band {
+        case .high:
+            return dim ? Color(red: 0.35, green: 0.85, blue: 0.55) : Color(red: 0.15, green: 0.72, blue: 0.42)
+        case .moderate:
+            return dim ? Color(red: 1.0, green: 0.72, blue: 0.35) : Color(red: 0.95, green: 0.55, blue: 0.12)
+        case .low:
+            return dim ? Color(red: 1.0, green: 0.42, blue: 0.42) : Color.red.opacity(0.88)
+        case .unknown:
+            return dim ? Color.white.opacity(0.45) : Color.secondary
+        }
+    }
+
+    /// Softer secondary tint for gradient strokes on glass cards.
+    static func readinessAccentSecondary(for band: ReadinessBand, accent: Color) -> Color {
+        switch band {
+        case .high:
+            return accent.opacity(0.45)
+        case .moderate:
+            return accent.opacity(0.42)
+        case .low:
+            return accent.opacity(0.45)
+        case .unknown:
+            return accent.opacity(0.35)
+        }
+    }
 }

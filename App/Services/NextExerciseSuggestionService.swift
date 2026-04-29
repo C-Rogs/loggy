@@ -27,7 +27,7 @@ public final class NextExerciseSuggestionService: Sendable {
                               AND ws.status = 'completed' AND ws.deleted_at IS NULL
                             GROUP BY wse2.exercise_id
                         )
-                        SELECT e.id, e.display_name, e.exercise_mode, e.is_custom
+                        SELECT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group
                         FROM pairs p
                         JOIN exercise e ON e.id = p.to_id AND e.deleted_at IS NULL
                         ORDER BY p.cnt DESC
@@ -50,12 +50,12 @@ public final class NextExerciseSuggestionService: Sendable {
         let rows = try Row.fetchAll(
             db,
             sql: """
-                SELECT e.id, e.display_name, e.exercise_mode, e.is_custom, COUNT(*) AS c
+                SELECT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group, COUNT(*) AS c
                 FROM workout_session_exercise wse
                 JOIN workout_session ws ON ws.id = wse.workout_session_id
                 JOIN exercise e ON e.id = wse.exercise_id AND e.deleted_at IS NULL
                 WHERE ws.status = 'completed' AND ws.deleted_at IS NULL AND wse.deleted_at IS NULL
-                GROUP BY e.id, e.display_name, e.exercise_mode, e.is_custom
+                GROUP BY e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group
                 ORDER BY c DESC
                 LIMIT 12
             """
@@ -67,7 +67,7 @@ public final class NextExerciseSuggestionService: Sendable {
         if let row = try Row.fetchOne(
             db,
             sql: """
-                SELECT id, display_name, exercise_mode, is_custom
+                SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group
                 FROM exercise
                 WHERE deleted_at IS NULL
                 ORDER BY sort_name COLLATE NOCASE ASC
@@ -85,7 +85,8 @@ public final class NextExerciseSuggestionService: Sendable {
             id: row["id"],
             displayName: row["display_name"],
             exerciseMode: ExerciseMode(rawValue: row["exercise_mode"]) ?? .weightReps,
-            isCustom: custom == 1
+            isCustom: custom == 1,
+            primaryMuscleGroup: row["primary_muscle_group"]
         )
     }
 }

@@ -3,7 +3,8 @@ import GRDB
 
 public protocol ExerciseRepositoryProtocol: Sendable {
     func allExercises() throws -> [ExerciseSummary]
-    func searchExercises(query: String) throws -> [ExerciseSummary]
+    /// Text search (display, canonical, aliases) with optional primary-muscle and mode filters.
+    func searchExercises(query: String, primaryMuscleSlug: String?, exerciseMode: ExerciseMode?) throws -> [ExerciseSummary]
     /// Same `exercise_mode` as the anchor, ordered for swap UI (muscle family first when inferable).
     func replacementCandidates(forExerciseId: String, limit: Int) throws -> [ExerciseSummary]
     func createCustomExercise(displayName: String, mode: ExerciseMode) throws -> String
@@ -51,6 +52,13 @@ public protocol WorkoutSessionRepositoryProtocol: Sendable {
     func exerciseHistoryBuckets(exerciseId: String, range: ExerciseHistoryTimeRange) throws -> [ExerciseHistoryBucket]
     /// Completed sets attributed to `exercise.primary_muscle_group` (via `logged_exercise_id` when set).
     func completedSetCountsByPrimaryMuscle(sinceDaysAgo: Int?) throws -> [MuscleGroupSetCount]
+    /// Primary-muscle set counts in `[toDaysAgo, fromDaysAgo)` relative to today (e.g. from=60, to=30 → 31–60 days ago).
+    func completedSetCountsByPrimaryMuscle(fromDaysAgo: Int?, toDaysAgo: Int?) throws -> [MuscleGroupSetCount]
+    func exerciseSetFrequency(fromDaysAgo: Int?, toDaysAgo: Int?, limit: Int) throws -> [ExerciseSetFrequencyRow]
+    /// Last `windowDays` vs the prior `windowDays`, aggregated to coarse muscle buckets by completed set count.
+    func muscleDistributionCoarseCurrentVsPrevious(windowDays: Int) throws -> [MuscleCoarseDistributionRow]
+    /// Completed sets per primary muscle, grouped by ISO week (last `limitWeeks` calendar weeks).
+    func weeklyMuscleSetRows(limitWeeks: Int) throws -> [WeeklyMuscleSetRow]
 }
 
 public protocol RestTimerRepositoryProtocol: Sendable {

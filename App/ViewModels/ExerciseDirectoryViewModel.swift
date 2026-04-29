@@ -34,18 +34,41 @@ enum ExercisePickerModeFilter: String, CaseIterable, Identifiable {
 final class ExerciseDirectoryViewModel: ObservableObject {
     @Published var query: String = ""
     @Published var modeFilter: ExercisePickerModeFilter = .all
+    /// `primary_muscle_group` slug, or `nil` for all muscles.
+    @Published var muscleSlugFilter: String?
     @Published private(set) var exercises: [ExerciseSummary] = []
 
-    func refresh(env: AppEnvironment) throws {
-        var list = try env.exercises.searchExercises(query: query)
-        if let mode = modeFilter.exerciseMode {
-            list = list.filter { $0.exerciseMode == mode }
+    private var searchRefreshTask: Task<Void, Never>?
+
+    deinit {
+        searchRefreshTask?.cancel()
+    }
+
+    /// Runs the current filters immediately (cancels any pending search debounce).
+    func refreshImmediately(env: AppEnvironment) throws {
+        searchRefreshTask?.cancel()
+        searchRefreshTask = nil
+        try refresh(env: env)
+    }
+
+    /// Debounces DB work while the user is typing in the search field (~280ms).
+    func scheduleSearchRefresh(env: AppEnvironment) {
+        MainActorDebouncer.reschedule(&searchRefreshTask) {
+            try? self.refresh(env: env)
         }
+    }
+
+    func refresh(env: AppEnvironment) throws {
+        let list = try env.exercises.searchExercises(
+            query: query,
+            primaryMuscleSlug: muscleSlugFilter,
+            exerciseMode: modeFilter.exerciseMode
+        )
         exercises = list
     }
 
     func createCustom(name: String, env: AppEnvironment) throws {
         _ = try env.exercises.createCustomExercise(displayName: name, mode: .weightReps)
-        try refresh(env: env)
+        try refreshImmediately(env: env)
     }
 }

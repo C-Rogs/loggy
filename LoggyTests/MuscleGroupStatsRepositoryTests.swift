@@ -69,4 +69,76 @@ final class MuscleGroupStatsRepositoryTests: XCTestCase {
         XCTAssertEqual(rows[0].muscleSlug, "upper back")
         XCTAssertEqual(rows[0].completedSetCount, 1)
     }
+
+    func testExerciseSetFrequencyUsesLoggedExercise() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("loggy-freq-\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        var config = Configuration()
+        config.foreignKeysEnabled = true
+        let pool = try DatabasePool(path: url.path, configuration: config)
+        try AppMigrator().migrate(pool)
+
+        let exId = UUID().uuidString
+        let sessionId = UUID().uuidString
+        let wseId = UUID().uuidString
+        let now = ISO8601UTC.string(from: Date())
+
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO exercise (id, canonical_name, display_name, exercise_mode, equipment_type,
+                        primary_muscle_group, secondary_muscle_groups_json, is_custom, sort_name, created_at, updated_at)
+                    VALUES (?, 'squat', 'Squat', 'weight_reps', NULL, 'quadriceps', '[]', 0, 'squat', ?, ?)
+                    """,
+                arguments: [exId, now, now]
+            )
+            try db.execute(
+                sql: """
+                    INSERT INTO workout_session (id, title, notes, started_at, ended_at, status, source,
+                        total_volume_kg_cache, total_set_count_cache, total_rep_count_cache, created_at, updated_at)
+                    VALUES (?, NULL, NULL, ?, ?, 'completed', 'manual', 0, 0, 0, ?, ?)
+                    """,
+                arguments: [sessionId, now, now, now, now]
+            )
+            try db.execute(
+                sql: """
+                    INSERT INTO workout_session_exercise (
+                        id, workout_session_id, exercise_id, block_id, display_order, notes,
+                        exercise_mode, target_rest_seconds, is_collapsed, created_at, updated_at)
+                    VALUES (?, ?, ?, NULL, 0, NULL, 'weight_reps', 90, 0, ?, ?)
+                    """,
+                arguments: [wseId, sessionId, exId, now, now]
+            )
+            for i in 0 ..< 2 {
+                try db.execute(
+                    sql: """
+                        INSERT INTO set_entry (
+                            id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
+                            weight_kg, reps, completed_at, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, 'normal', 'completed', 100, 5, ?, ?, ?)
+                        """,
+                    arguments: [UUID().uuidString, wseId, exId, i, now, now, now]
+                )
+            }
+        }
+
+        let repo = WorkoutSessionRepository(pool: pool)
+        let freq = try repo.exerciseSetFrequency(fromDaysAgo: nil, toDaysAgo: nil, limit: 20)
+        XCTAssertEqual(freq.count, 1)
+        XCTAssertEqual(freq[0].exerciseId, exId)
+        XCTAssertEqual(freq[0].completedSetCount, 2)
+    }
+
+    func testMuscleDistributionCoarseReturnsStableBucketOrder() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("loggy-dist-\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: url) }
+        var config = Configuration()
+        config.foreignKeysEnabled = true
+        let pool = try DatabasePool(path: url.path, configuration: config)
+        try AppMigrator().migrate(pool)
+
+        let repo = WorkoutSessionRepository(pool: pool)
+        let rows = try repo.muscleDistributionCoarseCurrentVsPrevious(windowDays: 30)
+        XCTAssertEqual(rows.count, ExerciseMuscleBucket.distributionChartOrder.count)
+    }
 }

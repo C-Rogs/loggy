@@ -11,7 +11,7 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
     public func allExercises() throws -> [ExerciseSummary] {
         try pool.read { db in
             try Self.fetchSummaries(db, sql: """
-                SELECT id, display_name, exercise_mode, is_custom
+                SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group
                 FROM exercise
                 WHERE deleted_at IS NULL
                 ORDER BY sort_name COLLATE NOCASE ASC
@@ -19,23 +19,39 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
         }
     }
 
-    public func searchExercises(query: String) throws -> [ExerciseSummary] {
+    public func searchExercises(query: String, primaryMuscleSlug: String?, exerciseMode: ExerciseMode?) throws -> [ExerciseSummary] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if q.isEmpty { return try allExercises() }
-        let pattern = "%\(q.lowercased())%"
-        return try pool.read { db in
-            try Self.fetchSummaries(db, sql: """
-                SELECT DISTINCT e.id, e.display_name, e.exercise_mode, e.is_custom
-                FROM exercise e
-                LEFT JOIN exercise_alias a ON a.exercise_id = e.id
-                WHERE e.deleted_at IS NULL
-                  AND (
+        let pattern: String? = q.isEmpty ? nil : "%\(q.lowercased())%"
+        var sql = """
+            SELECT DISTINCT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group
+            FROM exercise e
+            """
+        var args: [any DatabaseValueConvertible] = []
+        if pattern != nil {
+            sql += " LEFT JOIN exercise_alias a ON a.exercise_id = e.id"
+        }
+        sql += " WHERE e.deleted_at IS NULL"
+        if let pattern {
+            sql += """
+                 AND (
                     lower(e.display_name) LIKE ?
                     OR lower(e.canonical_name) LIKE ?
                     OR lower(a.alias) LIKE ?
                   )
-                ORDER BY e.sort_name COLLATE NOCASE ASC
-            """, arguments: [pattern, pattern, pattern])
+                """
+            args.append(contentsOf: [pattern, pattern, pattern])
+        }
+        if let slug = primaryMuscleSlug?.trimmingCharacters(in: .whitespacesAndNewlines), !slug.isEmpty {
+            sql += " AND lower(trim(e.primary_muscle_group)) = lower(?)"
+            args.append(slug)
+        }
+        if let mode = exerciseMode {
+            sql += " AND e.exercise_mode = ?"
+            args.append(mode.rawValue)
+        }
+        sql += " ORDER BY e.sort_name COLLATE NOCASE ASC"
+        return try pool.read { db in
+            try Self.fetchSummaries(db, sql: sql, arguments: StatementArguments(args))
         }
     }
 
@@ -86,7 +102,8 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
                     id: row["id"],
                     displayName: row["display_name"],
                     exerciseMode: ExerciseMode(rawValue: row["exercise_mode"] as String) ?? .weightReps,
-                    isCustom: (row["is_custom"] as Int?) == 1
+                    isCustom: (row["is_custom"] as Int?) == 1,
+                    primaryMuscleGroup: row["primary_muscle_group"]
                 )
                 if anchorBucket == .unknown {
                     other.append(summary)
@@ -199,7 +216,8 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
                 id: row["id"],
                 displayName: row["display_name"],
                 exerciseMode: ExerciseMode(rawValue: row["exercise_mode"]) ?? .weightReps,
-                isCustom: (row["is_custom"] as Int?) == 1
+                isCustom: (row["is_custom"] as Int?) == 1,
+                primaryMuscleGroup: row["primary_muscle_group"]
             )
         }
     }

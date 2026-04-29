@@ -11,49 +11,78 @@ struct SessionRecoveryView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("This workout was left open for a while.")
-                    .font(.headline)
-
-                Text("Choose how you want to continue.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                VStack(spacing: 12) {
-                    Button("Resume") {
-                        LoggyFeedback.primaryActionTap()
-                        try? env.workouts.touchActiveState(sessionId: sessionId)
-                        onDone()
-                        dismiss()
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    Button("Finish now") {
-                        try? env.workouts.finishSession(sessionId: sessionId)
-                        LoggyFeedback.workoutFinishedSaved()
-                        Task { @MainActor in
-                            await env.appleHealth.onWorkoutFinished(sessionId: sessionId)
-                            await env.liveActivity.end()
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 24) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("This workout was left open for a while.")
+                                .font(.title3.weight(.bold))
+                                .multilineTextAlignment(.leading)
+                            Text("Choose how you want to continue.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
-                        onDone()
-                        dismiss()
-                    }
-                    .buttonStyle(.bordered)
+                        .frame(maxWidth: 520, alignment: .leading)
+                        .padding(20)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                        }
 
-                    Button("Discard", role: .destructive) {
-                        env.appleHealth.onWorkoutDiscarded(sessionId: sessionId)
-                        try? env.workouts.discardSession(sessionId: sessionId)
-                        LoggyFeedback.workoutDiscarded()
-                        Task { @MainActor in await env.liveActivity.end() }
-                        onDone()
-                        dismiss()
+                        VStack(spacing: 12) {
+                            Button {
+                                LoggyFeedback.primaryActionTap()
+                                try? env.workouts.touchActiveState(sessionId: sessionId)
+                                onDone()
+                                dismiss()
+                            } label: {
+                                Text("Resume")
+                                    .font(.body.weight(.semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                            }
+                            .buttonStyle(.borderedProminent)
+
+                            Button {
+                                try? env.workouts.finishSession(sessionId: sessionId)
+                                LoggyFeedback.workoutFinishedSaved()
+                                Task { @MainActor in
+                                    await env.appleHealth.onWorkoutFinished(sessionId: sessionId)
+                                    await env.liveActivity.end()
+                                }
+                                onDone()
+                                dismiss()
+                            } label: {
+                                Text("Finish now")
+                                    .font(.body.weight(.semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button(role: .destructive) {
+                                env.appleHealth.onWorkoutDiscarded(sessionId: sessionId)
+                                try? env.workouts.discardSession(sessionId: sessionId)
+                                LoggyFeedback.workoutDiscarded()
+                                Task { @MainActor in await env.liveActivity.end() }
+                                onDone()
+                                dismiss()
+                            } label: {
+                                Text("Discard workout")
+                                    .font(.body.weight(.semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .padding(.horizontal, 20)
                     }
+                    .padding(.top, 8)
+                    .padding(.bottom, 28)
                 }
-
-                Spacer()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(20)
             .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
             .navigationTitle("Recover workout")
             .navigationBarTitleDisplayMode(.inline)

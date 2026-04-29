@@ -18,6 +18,7 @@ final class AppEnvironment: ObservableObject {
     let sessionCoach: SessionCoachService
     let csvExporter: LoggyCSVExporter
     let appleHealth: AppleHealthWorkoutService
+    let healthRecovery: HealthRecoveryService
 
     init() throws {
         let database = try AppDatabase.openShared()
@@ -31,6 +32,7 @@ final class AppEnvironment: ObservableObject {
         let workouts = WorkoutSessionRepository(pool: pool)
         self.workouts = workouts
         self.appleHealth = AppleHealthWorkoutService(workouts: workouts)
+        self.healthRecovery = HealthRecoveryService()
         self.exercises = ExerciseRepository(pool: pool)
         self.restTimers = RestTimerRepository(pool: pool)
         self.templates = TemplateRepository(pool: pool)

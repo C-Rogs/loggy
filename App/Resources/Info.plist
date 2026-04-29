@@ -34,7 +34,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Loggy reads heart rate and active energy from Apple Health so it can show your current BPM and live calories burned during a workout when your Apple Watch or other accessories record them.</string>
+	<string>Loggy reads heart rate and active energy during workouts when available, and can read sleep and heart rate variability for recovery insights. Data comes from Apple Health (often written by Apple Watch).</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Loggy saves completed strength workouts and estimated active energy to Apple Health so they can count toward your Activity rings and Fitness summaries.</string>
 	<key>NSSupportsLiveActivities</key>

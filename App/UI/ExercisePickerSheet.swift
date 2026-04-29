@@ -41,35 +41,62 @@ struct ExercisePickerSheet: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
 
+                MuscleFilterChipBar(selection: $vm.muscleSlugFilter)
+
                 Group {
                     switch mode {
                     case .single:
-                        List(vm.exercises) { ex in
-                            Button(ex.displayName) {
-                                if case let .single(onPick) = mode {
-                                    LoggyFeedback.primaryActionTap()
-                                    onPick(ex.id)
-                                    dismiss()
+                        List {
+                            if vm.exercises.isEmpty {
+                                ContentUnavailableView(
+                                    "No exercises",
+                                    systemImage: "figure.run",
+                                    description: Text("Adjust search, type, or muscle filter.")
+                                )
+                                .listRowBackground(Color.clear)
+                            } else {
+                                ForEach(vm.exercises) { ex in
+                                    Button {
+                                        if case let .single(onPick) = mode {
+                                            LoggyFeedback.primaryActionTap()
+                                            onPick(ex.id)
+                                            dismiss()
+                                        }
+                                    } label: {
+                                        ExerciseSummaryRowLabel(exercise: ex, style: .list)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }
                     case .multi:
-                        List(vm.exercises) { ex in
-                            let isOn = selectedIds.contains(ex.id)
-                            HStack(spacing: 12) {
-                                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(isOn ? Color.accentColor : .secondary)
-                                Text(ex.displayName)
-                                    .foregroundStyle(.primary)
-                                Spacer(minLength: 0)
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                if selectedIds.contains(ex.id) {
-                                    selectedIds.remove(ex.id)
-                                } else {
-                                    selectedIds.insert(ex.id)
-                                    LoggyFeedback.listSelectionTap()
+                        List {
+                            if vm.exercises.isEmpty {
+                                ContentUnavailableView(
+                                    "No exercises",
+                                    systemImage: "figure.run",
+                                    description: Text("Adjust search, type, or muscle filter.")
+                                )
+                                .listRowBackground(Color.clear)
+                            } else {
+                                ForEach(vm.exercises) { ex in
+                                    let isOn = selectedIds.contains(ex.id)
+                                    HStack(alignment: .top, spacing: 12) {
+                                        Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                                            .foregroundStyle(isOn ? Color.accentColor : .secondary)
+                                            .padding(.top, 2)
+                                        ExerciseSummaryRowLabel(exercise: ex, style: .list)
+                                        Spacer(minLength: 0)
+                                    }
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        if selectedIds.contains(ex.id) {
+                                            selectedIds.remove(ex.id)
+                                        } else {
+                                            selectedIds.insert(ex.id)
+                                            LoggyFeedback.listSelectionTap()
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -106,13 +133,16 @@ struct ExercisePickerSheet: View {
                 if let m = lockedExerciseMode {
                     vm.modeFilter = ExercisePickerModeFilter.forLockedExerciseMode(m)
                 }
-                try? vm.refresh(env: env)
+                try? vm.refreshImmediately(env: env)
             }
             .onChange(of: vm.query) { _, _ in
-                try? vm.refresh(env: env)
+                vm.scheduleSearchRefresh(env: env)
             }
             .onChange(of: vm.modeFilter) { _, _ in
-                try? vm.refresh(env: env)
+                try? vm.refreshImmediately(env: env)
+            }
+            .onChange(of: vm.muscleSlugFilter) { _, _ in
+                try? vm.refreshImmediately(env: env)
             }
         }
     }

@@ -19,6 +19,8 @@ struct ExerciseDirectoryView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
 
+            MuscleFilterChipBar(selection: $vm.muscleSlugFilter)
+
             List {
             Section {
                 HStack {
@@ -32,17 +34,20 @@ struct ExerciseDirectoryView: View {
             }
 
             Section("Exercises") {
-                ForEach(vm.exercises) { ex in
-                    NavigationLink {
-                        ExerciseInfoView(exerciseId: ex.id)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(ex.displayName).font(.headline)
-                            Text(ex.exerciseMode.rawValue.replacingOccurrences(of: "_", with: " "))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                if vm.exercises.isEmpty {
+                    ContentUnavailableView(
+                        "No exercises",
+                        systemImage: "line.3.horizontal.decrease.circle",
+                        description: Text("Try another search, type filter, or clear the muscle chip.")
+                    )
+                } else {
+                    ForEach(vm.exercises) { ex in
+                        NavigationLink {
+                            ExerciseInfoView(exerciseId: ex.id)
+                        } label: {
+                            ExerciseSummaryRowLabel(exercise: ex, style: .directory)
+                                .padding(.vertical, 4)
                         }
-                        .padding(.vertical, 4)
                     }
                 }
             }
@@ -57,12 +62,15 @@ struct ExerciseDirectoryView: View {
         )
         .toolbarBackground(.visible, for: .navigationBar)
         .searchable(text: $vm.query)
-        .task { try? vm.refresh(env: env) }
+        .task { try? vm.refreshImmediately(env: env) }
         .onChange(of: vm.query) { _, _ in
-            try? vm.refresh(env: env)
+            vm.scheduleSearchRefresh(env: env)
         }
         .onChange(of: vm.modeFilter) { _, _ in
-            try? vm.refresh(env: env)
+            try? vm.refreshImmediately(env: env)
+        }
+        .onChange(of: vm.muscleSlugFilter) { _, _ in
+            try? vm.refreshImmediately(env: env)
         }
     }
 }

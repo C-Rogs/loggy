@@ -157,4 +157,22 @@ enum ExerciseMuscleBucket: String, Sendable, CaseIterable {
         }
         return false
     }
+
+    /// Stable order for distribution charts (excludes only buckets with zero in both series in the UI).
+    static var distributionChartOrder: [ExerciseMuscleBucket] {
+        [.chest, .back, .shoulders, .legs, .arms, .core, .cardio, .unknown]
+    }
+
+    var distributionShortTitle: String {
+        switch self {
+        case .chest: return "Chest"
+        case .back: return "Back"
+        case .shoulders: return "Shoulders"
+        case .legs: return "Legs"
+        case .arms: return "Arms"
+        case .core: return "Core"
+        case .cardio: return "Cardio"
+        case .unknown: return "Other"
+        }
+    }
 }

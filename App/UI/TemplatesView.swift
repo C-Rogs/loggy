@@ -71,7 +71,12 @@ private struct TemplateDetailView: View {
 
             Section("Exercises") {
                 ForEach(exercises) { ex in
-                    Text(ex.displayName)
+                    NavigationLink {
+                        ExerciseInfoView(exerciseId: ex.id)
+                    } label: {
+                        ExerciseSummaryRowLabel(exercise: ex, style: .list)
+                            .padding(.vertical, 2)
+                    }
                 }
             }
         }

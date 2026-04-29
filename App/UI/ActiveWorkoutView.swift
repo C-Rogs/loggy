@@ -255,7 +255,6 @@ struct ActiveWorkoutView: View {
         }
         .sheet(item: $replaceExerciseTarget) { target in
             ReplaceExerciseSheet(
-                sessionExerciseId: target.sessionExerciseId,
                 currentExerciseId: target.currentExerciseId,
                 exerciseMode: target.exerciseMode,
                 onPick: { newId in

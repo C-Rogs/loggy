@@ -5,6 +5,50 @@ public struct ExerciseSummary: Identifiable, Hashable, Sendable {
     public var displayName: String
     public var exerciseMode: ExerciseMode
     public var isCustom: Bool
+    /// Primary muscle slug from `exercise.primary_muscle_group`, when loaded.
+    public var primaryMuscleGroup: String?
+
+    public init(
+        id: String,
+        displayName: String,
+        exerciseMode: ExerciseMode,
+        isCustom: Bool,
+        primaryMuscleGroup: String? = nil
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.exerciseMode = exerciseMode
+        self.isCustom = isCustom
+        self.primaryMuscleGroup = primaryMuscleGroup
+    }
+}
+
+/// Completed-set frequency for an exercise (attributed via `logged_exercise_id` when set).
+public struct ExerciseSetFrequencyRow: Identifiable, Hashable, Sendable {
+    public var exerciseId: String
+    public var displayName: String
+    public var completedSetCount: Int
+
+    public var id: String { exerciseId }
+}
+
+/// Coarse muscle bucket totals for comparing two time windows (e.g. last 30 days vs prior 30 days).
+public struct MuscleCoarseDistributionRow: Identifiable, Hashable, Sendable {
+    public var bucketRaw: String
+    public var title: String
+    public var currentSetCount: Int
+    public var previousSetCount: Int
+
+    public var id: String { bucketRaw }
+}
+
+/// One calendar week of completed sets by primary muscle slug (for weekly breakdown UI).
+public struct WeeklyMuscleSetRow: Identifiable, Hashable, Sendable {
+    public var weekKey: String
+    public var sortDateLabel: String
+    public var muscles: [MuscleGroupSetCount]
+
+    public var id: String { weekKey }
 }
 
 public struct WorkoutListItem: Identifiable, Hashable, Sendable {

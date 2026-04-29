@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct HomeView: View {
     @EnvironmentObject private var env: AppEnvironment
     @EnvironmentObject private var appleHealth: AppleHealthWorkoutService
+    @EnvironmentObject private var healthRecovery: HealthRecoveryService
     @ObservedObject var home: HomeViewModel
 
     @Environment(\.colorScheme) private var colorScheme
@@ -24,6 +25,11 @@ struct HomeView: View {
     @State private var showExport = false
     @State private var exportError: String?
     @State private var showActiveWorkoutBlockedAlert = false
+    @State private var readinessInsight: ReadinessInsight?
+    @State private var readinessLoading = false
+    @State private var showReadinessLearnMore = false
+    @State private var coachReadinessInsight: ReadinessInsight?
+    @State private var coachReadinessLoading = false
 
     private var appearance: AppAppearance {
         AppAppearance(rawValue: appearanceRaw) ?? .system
@@ -32,6 +38,20 @@ struct HomeView: View {
     var body: some View {
         NavigationStack(path: $path) {
             List {
+                if healthRecovery.recoveryInsightsEnabled {
+                    Section {
+                        ReadinessHeroView(
+                            insight: readinessInsight,
+                            isLoading: readinessLoading,
+                            onLearnMore: { showReadinessLearnMore = true }
+                        )
+                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                        .listRowBackground(Color.clear)
+                    } header: {
+                        Text("Readiness")
+                    }
+                }
+
                 if let active = home.activeSummary {
                     Section {
                         VStack(alignment: .leading, spacing: 8) {
@@ -193,10 +213,20 @@ struct HomeView: View {
                                 get: { appleHealth.syncWorkoutsToHealthEnabled },
                                 set: { appleHealth.setSyncWorkoutsToHealthEnabled($0) }
                             ))
-                            Button("Allow Health access…") {
+                            Button("Allow workout & heart-rate access…") {
                                 Task { await appleHealth.requestAuthorization() }
                             }
-                            Text("Saves strength-training workouts plus a rough active-energy estimate for Activity rings. BPM and post-workout charts read from Health (usually written by Apple Watch). A separate watchOS app is optional; HealthKit is the supported path for wrist heart rate on iPhone.")
+                            Text("Saves strength-training workouts plus a rough active-energy estimate for Activity rings. BPM and post-workout charts read from Health (usually written by Apple Watch) during an active session.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Toggle("Recovery insights", isOn: Binding(
+                                get: { healthRecovery.recoveryInsightsEnabled },
+                                set: { healthRecovery.setRecoveryInsightsEnabled($0) }
+                            ))
+                            Button("Allow sleep & HRV access…") {
+                                Task { await healthRecovery.requestAuthorization() }
+                            }
+                            Text("Uses sleep and heart rate variability from Apple Health for advisory readiness on Home—not live workout streaming.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -229,9 +259,26 @@ struct HomeView: View {
                 }
                 .environment(\.loggyOLEDDarkUserPreference, loggyOLEDDark)
             }
+            .sheet(isPresented: $showReadinessLearnMore) {
+                ReadinessLearnMoreSheet()
+                    .environment(\.loggyOLEDDarkUserPreference, loggyOLEDDark)
+                    .presentationDetents([.medium, .large])
+            }
             .sheet(isPresented: $showCoachStart) {
                 NavigationStack {
                     Form {
+                        if healthRecovery.recoveryInsightsEnabled {
+                            Section {
+                                ReadinessHeroView(
+                                    insight: coachReadinessInsight,
+                                    isLoading: coachReadinessLoading,
+                                    compact: true,
+                                    onLearnMore: {}
+                                )
+                                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                                .listRowBackground(Color.clear)
+                            }
+                        }
                         Section {
                             TextField("Workout title", text: $coachTitleDraft)
                             Text("You can edit the title before starting. The workout starts empty.")
@@ -317,11 +364,35 @@ struct HomeView: View {
             .onAppear {
                 try? home.refresh(env: env)
             }
+            .task(id: healthRecovery.recoveryInsightsEnabled) {
+                await refreshReadinessHero()
+            }
         }
     }
 
     private func prepareCoachStart() {
         coachTitleDraft = (try? env.sessionCoach.suggestedSessionTitle()) ?? "Workout"
+        coachReadinessLoading = true
+        coachReadinessInsight = nil
+        Task {
+            if healthRecovery.recoveryInsightsEnabled {
+                coachReadinessInsight = await healthRecovery.fetchReadinessInsight()
+            } else {
+                coachReadinessInsight = nil
+            }
+            coachReadinessLoading = false
+        }
+    }
+
+    private func refreshReadinessHero() async {
+        guard healthRecovery.recoveryInsightsEnabled else {
+            readinessInsight = nil
+            readinessLoading = false
+            return
+        }
+        readinessLoading = true
+        readinessInsight = await healthRecovery.fetchReadinessInsight()
+        readinessLoading = false
     }
 
     private func startWithCoachTitle() {

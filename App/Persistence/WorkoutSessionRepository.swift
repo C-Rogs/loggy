@@ -1063,14 +1063,22 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
     }
 
     public func completedSetCountsByPrimaryMuscle(sinceDaysAgo: Int?) throws -> [MuscleGroupSetCount] {
-        let dateClause: String
-        var arguments: [any DatabaseValueConvertible] = []
-        if let days = sinceDaysAgo {
-            dateClause = "AND date(se.completed_at) >= date('now', ?)"
-            arguments.append("-\(days) days")
-        } else {
-            dateClause = ""
+        if let s = sinceDaysAgo {
+            return try completedSetCountsByPrimaryMuscle(fromDaysAgo: s, toDaysAgo: nil)
         }
+        return try completedSetCountsByPrimaryMuscle(fromDaysAgo: nil, toDaysAgo: nil)
+    }
+
+    /// Inclusive lower bound `fromDaysAgo` (e.g. 30 = on/after "today minus 30 days") and optional exclusive upper `toDaysAgo` (e.g. 30 with from 60 = the 30-day block before the most recent 30 days).
+    public func completedSetCountsByPrimaryMuscle(fromDaysAgo: Int?, toDaysAgo: Int?) throws -> [MuscleGroupSetCount] {
+        var rangeParts: [String] = []
+        if let f = fromDaysAgo {
+            rangeParts.append("date(se.completed_at) >= date('now', '-\(f) days')")
+        }
+        if let t = toDaysAgo {
+            rangeParts.append("date(se.completed_at) < date('now', '-\(t) days')")
+        }
+        let rangeClause = rangeParts.isEmpty ? "" : " AND " + rangeParts.joined(separator: " AND ")
         let sql = """
             SELECT e.primary_muscle_group AS slug,
                    COUNT(*) AS cnt
@@ -1083,21 +1091,138 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
               AND ws.status = 'completed'
               AND e.primary_muscle_group IS NOT NULL
               AND length(trim(e.primary_muscle_group)) > 0
-              \(dateClause)
+              \(rangeClause)
             GROUP BY e.primary_muscle_group
             ORDER BY cnt DESC
             """
         return try pool.read { db in
-            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
-            return rows.compactMap { row -> MuscleGroupSetCount? in
-                guard let slug: String = row["slug"], !slug.isEmpty else { return nil }
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [])
+            return Self.mapMuscleGroupCountRows(rows)
+        }
+    }
+
+    public func exerciseSetFrequency(fromDaysAgo: Int?, toDaysAgo: Int?, limit: Int) throws -> [ExerciseSetFrequencyRow] {
+        var rangeParts: [String] = []
+        if let f = fromDaysAgo {
+            rangeParts.append("date(se.completed_at) >= date('now', '-\(f) days')")
+        }
+        if let t = toDaysAgo {
+            rangeParts.append("date(se.completed_at) < date('now', '-\(t) days')")
+        }
+        let rangeClause = rangeParts.isEmpty ? "" : " AND " + rangeParts.joined(separator: " AND ")
+        let lim = max(1, min(limit, 500))
+        let sql = """
+            SELECT e.id AS eid,
+                   e.display_name AS dname,
+                   COUNT(*) AS cnt
+            FROM set_entry se
+            INNER JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id AND wse.deleted_at IS NULL
+            INNER JOIN workout_session ws ON ws.id = wse.workout_session_id AND ws.deleted_at IS NULL
+            INNER JOIN exercise e ON e.id = COALESCE(se.logged_exercise_id, wse.exercise_id) AND e.deleted_at IS NULL
+            WHERE se.status = 'completed'
+              AND se.deleted_at IS NULL
+              AND ws.status = 'completed'
+              \(rangeClause)
+            GROUP BY e.id, e.display_name
+            ORDER BY cnt DESC
+            LIMIT \(lim)
+            """
+        return try pool.read { db in
+            try Row.fetchAll(db, sql: sql, arguments: []).map { row in
                 let cnt = (row["cnt"] as Int64?).map(Int.init) ?? (row["cnt"] as Int?) ?? 0
-                return MuscleGroupSetCount(
+                return ExerciseSetFrequencyRow(
+                    exerciseId: row["eid"],
+                    displayName: row["dname"],
+                    completedSetCount: cnt
+                )
+            }
+        }
+    }
+
+    public func muscleDistributionCoarseCurrentVsPrevious(windowDays: Int) throws -> [MuscleCoarseDistributionRow] {
+        let w = max(1, windowDays)
+        let current = try completedSetCountsByPrimaryMuscle(fromDaysAgo: w, toDaysAgo: nil)
+        let previous = try completedSetCountsByPrimaryMuscle(fromDaysAgo: w * 2, toDaysAgo: w)
+        var curMap: [ExerciseMuscleBucket: Int] = [:]
+        var prevMap: [ExerciseMuscleBucket: Int] = [:]
+        for r in current {
+            let slug = r.muscleSlug.lowercased()
+            let bucket = ExerciseMuscleBucket.coarseBucketFromStoredSlug(slug) ?? .unknown
+            curMap[bucket, default: 0] += r.completedSetCount
+        }
+        for r in previous {
+            let slug = r.muscleSlug.lowercased()
+            let bucket = ExerciseMuscleBucket.coarseBucketFromStoredSlug(slug) ?? .unknown
+            prevMap[bucket, default: 0] += r.completedSetCount
+        }
+        return ExerciseMuscleBucket.distributionChartOrder.map { b in
+            MuscleCoarseDistributionRow(
+                bucketRaw: b.rawValue,
+                title: b.distributionShortTitle,
+                currentSetCount: curMap[b] ?? 0,
+                previousSetCount: prevMap[b] ?? 0
+            )
+        }
+    }
+
+    public func weeklyMuscleSetRows(limitWeeks: Int) throws -> [WeeklyMuscleSetRow] {
+        let weeks = max(1, min(limitWeeks, 104))
+        let days = weeks * 7
+        let sql = """
+            SELECT strftime('%Y-W%W', se.completed_at) AS wk,
+                   strftime('%Y-%m-%d', MIN(se.completed_at)) AS sort_lbl,
+                   e.primary_muscle_group AS slug,
+                   COUNT(*) AS cnt
+            FROM set_entry se
+            INNER JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id AND wse.deleted_at IS NULL
+            INNER JOIN workout_session ws ON ws.id = wse.workout_session_id AND ws.deleted_at IS NULL
+            INNER JOIN exercise e ON e.id = COALESCE(se.logged_exercise_id, wse.exercise_id) AND e.deleted_at IS NULL
+            WHERE se.status = 'completed'
+              AND se.deleted_at IS NULL
+              AND ws.status = 'completed'
+              AND e.primary_muscle_group IS NOT NULL
+              AND length(trim(e.primary_muscle_group)) > 0
+              AND date(se.completed_at) >= date('now', '-\(days) days')
+            GROUP BY wk, slug
+            ORDER BY MIN(se.completed_at) ASC, cnt DESC
+            """
+        return try pool.read { db in
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [])
+            var byWeek: [String: (label: String, items: [MuscleGroupSetCount])] = [:]
+            for row in rows {
+                let wk: String = row["wk"]
+                let lbl: String = row["sort_lbl"]
+                guard let slug: String = row["slug"], !slug.isEmpty else { continue }
+                let cnt = (row["cnt"] as Int64?).map(Int.init) ?? (row["cnt"] as Int?) ?? 0
+                let item = MuscleGroupSetCount(
                     muscleSlug: slug,
                     displayLabel: MuscleDisplayName.forStoredSlug(slug),
                     completedSetCount: cnt
                 )
+                if byWeek[wk] == nil {
+                    byWeek[wk] = (lbl, [item])
+                } else {
+                    var entry = byWeek[wk]!
+                    entry.items.append(item)
+                    byWeek[wk] = entry
+                }
             }
+            return byWeek.keys.sorted().map { key in
+                let entry = byWeek[key]!
+                return WeeklyMuscleSetRow(weekKey: key, sortDateLabel: entry.label, muscles: entry.items)
+            }
+        }
+    }
+
+    private static func mapMuscleGroupCountRows(_ rows: [Row]) -> [MuscleGroupSetCount] {
+        rows.compactMap { row -> MuscleGroupSetCount? in
+            guard let slug: String = row["slug"], !slug.isEmpty else { return nil }
+            let cnt = (row["cnt"] as Int64?).map(Int.init) ?? (row["cnt"] as Int?) ?? 0
+            return MuscleGroupSetCount(
+                muscleSlug: slug,
+                displayLabel: MuscleDisplayName.forStoredSlug(slug),
+                completedSetCount: cnt
+            )
         }
     }
 
