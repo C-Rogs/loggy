@@ -31,6 +31,9 @@ struct HomeView: View {
     @State private var showReadinessLearnMore = false
     @State private var coachReadinessInsight: ReadinessInsight?
     @State private var coachReadinessLoading = false
+    @State private var pastWorkoutsSearch = ""
+    @State private var importFraction: Double?
+    @State private var importStatus = ""
 
     private var appearance: AppAppearance {
         AppAppearance(rawValue: appearanceRaw) ?? .system
@@ -39,6 +42,17 @@ struct HomeView: View {
     /// First-run hints until the user completes a workout or dismisses the banner.
     private var showGettingStartedBanner: Bool {
         !dismissedGettingStarted && home.completed.isEmpty && home.activeSummary == nil
+    }
+
+    private var filteredPastWorkouts: [WorkoutListItem] {
+        let q = pastWorkoutsSearch.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return home.completed }
+        return home.completed.filter { item in
+            let title = (item.title ?? "").lowercased()
+            if title.contains(q) { return true }
+            let when = item.startedAt.formatted(date: .abbreviated, time: .shortened).lowercased()
+            return when.contains(q)
+        }
     }
 
     var body: some View {
@@ -197,17 +211,23 @@ struct HomeView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .listRowBackground(Color.clear)
-                    }
-                    ForEach(home.completed) { item in
-                        NavigationLink(value: HomeRoute.history(item.id)) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.title?.isEmpty == false ? item.title! : "Workout")
-                                Text(item.startedAt.formatted(date: .abbreviated, time: .shortened))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text("Volume \(Int(item.totalVolumeKg)) kg · \(item.totalSetCount) sets")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                    } else if filteredPastWorkouts.isEmpty {
+                        Text("No workouts match your search.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .listRowBackground(Color.clear)
+                    } else {
+                        ForEach(filteredPastWorkouts) { item in
+                            NavigationLink(value: HomeRoute.history(item.id)) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.title?.isEmpty == false ? item.title! : "Workout")
+                                    Text(item.startedAt.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text("Volume \(Int(item.totalVolumeKg)) kg · \(item.totalSetCount) sets")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
                     }
@@ -215,6 +235,7 @@ struct HomeView: View {
                     Text("Past workouts")
                 }
             }
+            .searchable(text: $pastWorkoutsSearch, prompt: "Search past workouts")
             .scrollContentBackground(.hidden)
             .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
             .navigationTitle("Loggy")
@@ -315,6 +336,9 @@ struct HomeView: View {
                             Button("Export workouts CSV…") {
                                 exportCSV()
                             }
+                            Text("Your log stays only on this iPhone until you export. Save a CSV occasionally as a backup outside Loggy.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                         Section("About") {
                             Text("Export is a Loggy-native CSV of completed sessions and sets for spreadsheets or backup.")
@@ -392,28 +416,49 @@ struct HomeView: View {
             .fileImporter(isPresented: $showImporter, allowedContentTypes: [.commaSeparatedText]) { result in
                 switch result {
                 case let .success(url):
-                    isImporting = true
                     importError = nil
                     importSummary = nil
+                    isImporting = true
+                    importFraction = 0
+                    importStatus = "Reading file…"
                     Task {
-                        defer { isImporting = false }
+                        let importer = env.hevyImporter
+                        defer {
+                            Task { @MainActor in
+                                isImporting = false
+                                importFraction = nil
+                                importStatus = ""
+                            }
+                        }
                         do {
                             let accessed = url.startAccessingSecurityScopedResource()
                             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
                             let data = try Data(contentsOf: url)
-                            let res = try env.hevyImporter.importCSV(data: data, filename: url.lastPathComponent)
-                            if res.skippedDuplicate {
-                                importSummary = "Skipped duplicate import (same file hash)."
-                            } else {
-                                importSummary = "Imported \(res.importedWorkouts) workout(s)."
+                            let filename = url.lastPathComponent
+                            let res = try await Task.detached(priority: .userInitiated) {
+                                try importer.importCSV(data: data, filename: filename) { p, msg in
+                                    Task { @MainActor in
+                                        importFraction = p
+                                        importStatus = msg
+                                    }
+                                }
+                            }.value
+                            await MainActor.run {
+                                if res.skippedDuplicate {
+                                    importSummary = "Skipped duplicate import (same file hash)."
+                                } else {
+                                    importSummary = "Imported \(res.importedWorkouts) workout(s)."
+                                }
+                                try? home.refresh(env: env)
                             }
-                            try? home.refresh(env: env)
                         } catch {
-                            importError = String(describing: error)
+                            await MainActor.run {
+                                importError = UserFacingError.message(for: error)
+                            }
                         }
                     }
                 case let .failure(err):
-                    importError = String(describing: err)
+                    importError = UserFacingError.message(for: err)
                 }
             }
             .fileExporter(
@@ -435,12 +480,18 @@ struct HomeView: View {
             } message: { Text(exportError ?? "") }
             .overlay {
                 if isImporting {
-                    VStack(spacing: 10) {
-                        ProgressView()
-                            .accessibilityLabel("Importing workouts")
-                        Text("Importing…")
+                    VStack(spacing: 12) {
+                        if let f = importFraction {
+                            ProgressView(value: f, total: 1.0)
+                                .accessibilityValue("\(Int(f * 100)) percent")
+                        } else {
+                            ProgressView()
+                                .accessibilityLabel("Importing workouts")
+                        }
+                        Text(importStatus.isEmpty ? "Importing…" : importStatus)
                             .font(.subheadline.weight(.medium))
-                        Text("Large Hevy exports can take a few seconds.")
+                            .multilineTextAlignment(.center)
+                        Text("Large Hevy exports can take a minute—Loggy works through each workout in order.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -517,7 +568,7 @@ struct HomeView: View {
             exportDocument = CSVExportDocument(data: data)
             showExport = true
         } catch {
-            exportError = String(describing: error)
+            exportError = UserFacingError.message(for: error)
         }
     }
 }

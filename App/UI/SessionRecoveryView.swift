@@ -9,6 +9,8 @@ struct SessionRecoveryView: View {
     let sessionId: String
     let onDone: () -> Void
 
+    @State private var confirmDiscard = false
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -68,12 +70,7 @@ struct SessionRecoveryView: View {
                             .buttonStyle(.bordered)
 
                             Button(role: .destructive) {
-                                env.appleHealth.onWorkoutDiscarded(sessionId: sessionId)
-                                try? env.workouts.discardSession(sessionId: sessionId)
-                                LoggyFeedback.workoutDiscarded()
-                                Task { @MainActor in await env.liveActivity.end() }
-                                onDone()
-                                dismiss()
+                                confirmDiscard = true
                             } label: {
                                 Text("Discard workout")
                                     .font(.body.weight(.semibold))
@@ -92,6 +89,18 @@ struct SessionRecoveryView: View {
             .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
             .navigationTitle("Recover workout")
             .navigationBarTitleDisplayMode(.inline)
+            .confirmationDialog(
+                "Discard this workout?",
+                isPresented: $confirmDiscard,
+                titleVisibility: .visible
+            ) {
+                Button("Discard workout", role: .destructive) {
+                    discardSessionAndDismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This removes the session from Loggy. Logged sets won’t appear in Past workouts.")
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {
@@ -105,5 +114,14 @@ struct SessionRecoveryView: View {
             )
             .toolbarBackground(.visible, for: .navigationBar)
         }
+    }
+
+    private func discardSessionAndDismiss() {
+        env.appleHealth.onWorkoutDiscarded(sessionId: sessionId)
+        try? env.workouts.discardSession(sessionId: sessionId)
+        LoggyFeedback.workoutDiscarded()
+        Task { @MainActor in await env.liveActivity.end() }
+        onDone()
+        dismiss()
     }
 }

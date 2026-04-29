@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		E7E8E9E0A1A2A3A4B5B6B7B8 /* LoggyTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E8E9E0A1A2A3A4B5B6B7B9 /* LoggyTheme.swift */; };
+		UFACE11112222333445551 /* UserFacingError.swift in Sources */ = {isa = PBXBuildFile; fileRef = UFACE11112222333445552 /* UserFacingError.swift */; };
 		03354685817CE88702548CBD /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = C530CA74B48627DBAF34FEC3 /* WorkoutActivityAttributes.swift */; };
 		05505B65F1E59BA3F78E8E0C /* PRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD1F15627EAD106080770F4 /* PRService.swift */; };
 		09E5575828E741C80EB899BC /* TemplateRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6320FEEDC3624EF5571AFBD3 /* TemplateRepository.swift */; };
@@ -42,6 +43,7 @@
 		HREC22221112222333445551 /* HealthRecoveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = HREC22221112222333445552 /* HealthRecoveryService.swift */; };
 		RHERO22221112222333445551 /* ReadinessHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RHERO22221112222333445552 /* ReadinessHeroView.swift */; };
 		RET22221112222333445551 /* ReadinessEvaluatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = RET22221112222333445552 /* ReadinessEvaluatorTests.swift */; };
+		UFETEST11112222333445551 /* UserFacingErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = UFETEST11112222333445552 /* UserFacingErrorTests.swift */; };
 		D0E0E0E0E0E0E0E0E0E0E001 /* ExerciseMuscleBucket.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E0E0E0E0E0E0E0E0E0E002 /* ExerciseMuscleBucket.swift */; };
 		E4E4E4E4E4E4E4E4E4E4E401 /* LiveActivitySetPreviewFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4E4E4E4E4E4E4E4E4E4E402 /* LiveActivitySetPreviewFormatter.swift */; };
 		M1M1M1M1M1M1M1M1M1M101 /* MuscleDisplayName.swift in Sources */ = {isa = PBXBuildFile; fileRef = M1M1M1M1M1M1M1M1M1M102 /* MuscleDisplayName.swift */; };
@@ -135,6 +137,7 @@
 		HREC22221112222333445552 /* HealthRecoveryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthRecoveryService.swift; sourceTree = "<group>"; };
 		RHERO22221112222333445552 /* ReadinessHeroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessHeroView.swift; sourceTree = "<group>"; };
 		RET22221112222333445552 /* ReadinessEvaluatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessEvaluatorTests.swift; sourceTree = "<group>"; };
+		UFETEST11112222333445552 /* UserFacingErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserFacingErrorTests.swift; sourceTree = "<group>"; };
 		D0E0E0E0E0E0E0E0E0E0E002 /* ExerciseMuscleBucket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseMuscleBucket.swift; sourceTree = "<group>"; };
 		E4E4E4E4E4E4E4E4E4E4E402 /* LiveActivitySetPreviewFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivitySetPreviewFormatter.swift; sourceTree = "<group>"; };
 		M1M1M1M1M1M1M1M1M1M102 /* MuscleDisplayName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleDisplayName.swift; sourceTree = "<group>"; };
@@ -185,6 +188,7 @@
 		E2B258203A488C9EDBEA4AE0 /* WorkoutLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivityWidget.swift; sourceTree = "<group>"; };
 		F1A2B3C4D5E6789012345602 /* Media.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Media.xcassets; sourceTree = "<group>"; };
 		E7E8E9E0A1A2A3A4B5B6B7B9 /* LoggyTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyTheme.swift; sourceTree = "<group>"; };
+		UFACE11112222333445552 /* UserFacingError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserFacingError.swift; sourceTree = "<group>"; };
 		F34B157E7EDE60A2A7522AF8 /* LoggyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyApp.swift; sourceTree = "<group>"; };
 		F4F879CFA6BEEDB7F088BE38 /* ExercisePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePickerSheet.swift; sourceTree = "<group>"; };
 		F90111223344556677889901 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
@@ -312,6 +316,7 @@
 				F90111223344556677889901 /* DesignTokens.swift */,
 				MAD00011112222333344445552 /* MainActorDebouncer.swift */,
 				E7E8E9E0A1A2A3A4B5B6B7B9 /* LoggyTheme.swift */,
+				UFACE11112222333445552 /* UserFacingError.swift */,
 				C530CA74B48627DBAF34FEC3 /* WorkoutActivityAttributes.swift */,
 			);
 			path = Shared;
@@ -348,6 +353,7 @@
 				T2T2T2T2T2T2T2T2T202 /* MuscleGroupStatsRepositoryTests.swift */,
 				EXRF01010101010101010102 /* ExerciseRepositoryMuscleFilterTests.swift */,
 				RET22221112222333445552 /* ReadinessEvaluatorTests.swift */,
+				UFETEST11112222333445552 /* UserFacingErrorTests.swift */,
 			);
 			path = LoggyTests;
 			sourceTree = "<group>";
@@ -616,6 +622,7 @@
 				6021E8F742245B9DC56923A7 /* TemplatesView.swift in Sources */,
 				9EAA35D8EF3B875AC24F6115 /* TemplatesViewModel.swift in Sources */,
 				E7E8E9E0A1A2A3A4B5B6B7B8 /* LoggyTheme.swift in Sources */,
+				UFACE11112222333445551 /* UserFacingError.swift in Sources */,
 				9FACE112ABAF4D963C9E7DA1 /* WorkoutActivityAttributes.swift in Sources */,
 				A80465D16160B83F33B1895B /* WorkoutCalculationService.swift in Sources */,
 				3D55BAB6E03AC407536673C5 /* WorkoutSessionRepository.swift in Sources */,
@@ -639,6 +646,7 @@
 				T2T2T2T2T2T2T2T2T201 /* MuscleGroupStatsRepositoryTests.swift in Sources */,
 				EXRF01010101010101010101 /* ExerciseRepositoryMuscleFilterTests.swift in Sources */,
 				RET22221112222333445551 /* ReadinessEvaluatorTests.swift in Sources */,
+				UFETEST11112222333445551 /* UserFacingErrorTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

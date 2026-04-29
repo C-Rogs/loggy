@@ -17,9 +17,16 @@ final class HevyCSVImporter: Sendable {
         self.importRepo = importRepo
     }
 
-    func importCSV(data: Data, filename: String?) throws -> HevyImportResult {
+    /// - Parameter onProgress: Called from the importer’s execution context (often a background queue); hop to MainActor in the handler if updating UI.
+    func importCSV(
+        data: Data,
+        filename: String?,
+        onProgress: (@Sendable (Double, String) -> Void)? = nil
+    ) throws -> HevyImportResult {
+        onProgress?(0.02, "Checking file…")
         let hash = SHA256.hash(data: data).compactMap { String(format: "%02x", $0) }.joined()
         if try importRepo.hasImported(contentSHA256: hash) {
+            onProgress?(1.0, "Already imported")
             return HevyImportResult(importedWorkouts: 0, skippedDuplicate: true)
         }
 
@@ -27,8 +34,12 @@ final class HevyCSVImporter: Sendable {
             throw HevyImportError.invalidEncoding
         }
 
+        onProgress?(0.06, "Parsing CSV…")
         let rows = CSVUtil.parseRows(text)
-        guard !rows.isEmpty else { return HevyImportResult(importedWorkouts: 0, skippedDuplicate: false) }
+        guard !rows.isEmpty else {
+            onProgress?(1.0, "Done")
+            return HevyImportResult(importedWorkouts: 0, skippedDuplicate: false)
+        }
 
         let header = rows[0].map { $0.lowercased() }
         guard let titleIdx = header.firstIndex(of: "title"),
@@ -75,7 +86,18 @@ final class HevyCSVImporter: Sendable {
             return a.end < b.end
         }
 
-        for key in sortedKeys {
+        let totalWorkouts = sortedKeys.count
+        if totalWorkouts == 0 {
+            onProgress?(1.0, "Done")
+            try importRepo.recordImport(contentSHA256: hash, filename: filename)
+            return HevyImportResult(importedWorkouts: 0, skippedDuplicate: false)
+        }
+
+        onProgress?(0.08, "Found \(totalWorkouts) workout\(totalWorkouts == 1 ? "" : "s")…")
+
+        let progressSpan = 0.90 / Double(totalWorkouts)
+        for (idx, key) in sortedKeys.enumerated() {
+            onProgress?(0.08 + progressSpan * Double(idx), "Importing workout \(idx + 1) of \(totalWorkouts)…")
             guard let lines = groups[key], let first = lines.first else { continue }
             try pool.write { db in
                 let title: String? = Self.nilIfEmpty(first[titleIdx])
@@ -193,9 +215,12 @@ final class HevyCSVImporter: Sendable {
             }
 
             imported += 1
+            onProgress?(0.08 + progressSpan * Double(idx + 1), "Imported \(imported) of \(totalWorkouts)")
         }
 
+        onProgress?(0.98, "Saving import record…")
         try importRepo.recordImport(contentSHA256: hash, filename: filename)
+        onProgress?(1.0, "Done")
         return HevyImportResult(importedWorkouts: imported, skippedDuplicate: false)
     }
 
@@ -268,6 +293,19 @@ enum HevyImportError: Error {
     case invalidEncoding
     case missingHeader
     case invalidRow
+}
+
+extension HevyImportError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .invalidEncoding:
+            return "That file isn’t valid UTF-8 text. Export the CSV again from Hevy."
+        case .missingHeader:
+            return "This CSV doesn’t match Hevy’s export columns. Use Hevy’s backup export CSV."
+        case .invalidRow:
+            return "A row in the file couldn’t be imported. Try re-exporting from Hevy."
+        }
+    }
 }
 
 enum CSVUtil {

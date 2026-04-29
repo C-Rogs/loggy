@@ -93,6 +93,12 @@ public enum ExportError: Error {
     case encodingFailed
 }
 
+extension ExportError: LocalizedError {
+    public var errorDescription: String? {
+        "Couldn’t prepare the export file. Try again or free a little storage."
+    }
+}
+
 /// Minimal `FileDocument` for SwiftUI `.fileExporter`.
 public struct CSVExportDocument: FileDocument {
     public static var readableContentTypes: [UTType] { [.commaSeparatedText] }
