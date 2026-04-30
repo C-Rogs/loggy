@@ -32,3 +32,6 @@ xcuserdata/
 .derivedData_ci/
 build/
 
+# Ad-hoc xcodebuild output dirs at repo root (do not commit)
+/build_*/
+
