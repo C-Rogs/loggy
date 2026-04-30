@@ -27,7 +27,11 @@ enum RestTimerEndNotifier {
             return
         }
 
-        Task {
+        // Clear any in-flight request immediately so concurrent `Task` invocations cannot stack duplicate `add` calls
+        // before a prior `cancel` runs (see `Task` body).
+        cancel(timerId: timerId)
+
+        Task { @MainActor in
             let settings = await center.notificationSettings()
             if settings.authorizationStatus == .notDetermined {
                 _ = try? await center.requestAuthorization(options: [.alert, .sound])
@@ -42,12 +46,18 @@ enum RestTimerEndNotifier {
 
             cancel(timerId: timerId)
 
+            let intervalNow = endsAt.timeIntervalSinceNow
+            guard intervalNow > 1 else {
+                cancel(timerId: timerId)
+                return
+            }
+
             let content = UNMutableNotificationContent()
             content.title = "Rest done"
             content.body = "Start your next set."
             content.sound = .default
 
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: intervalNow, repeats: false)
             let request = UNNotificationRequest(identifier: identifier(forTimerId: timerId), content: content, trigger: trigger)
             try? await center.add(request)
         }

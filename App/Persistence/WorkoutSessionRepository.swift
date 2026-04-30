@@ -34,6 +34,7 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                     FROM workout_session ws
                     JOIN active_workout_state aws ON aws.workout_session_id = ws.id
                     WHERE ws.status = 'active' AND ws.deleted_at IS NULL
+                    ORDER BY datetime(ws.started_at) DESC
                     LIMIT 1
                 """
             ) else { return nil }
@@ -51,6 +52,7 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
         let id = UUID().uuidString
         let now = ISO8601UTC.string(from: Date())
         try pool.write { db in
+            try Self.assertNoActiveSession(db: db)
             try db.execute(
                 sql: """
                     INSERT INTO workout_session (
@@ -70,6 +72,7 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
         let sessionId = UUID().uuidString
         let now = ISO8601UTC.string(from: Date())
         try pool.write { db in
+            try Self.assertNoActiveSession(db: db)
             let templateName: String? = try String.fetchOne(
                 db,
                 sql: "SELECT name FROM workout_template WHERE id = ? AND deleted_at IS NULL",
@@ -91,11 +94,12 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
             let rows = try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT exercise_id, display_order, notes, default_rest_seconds, target_set_count, default_set_type
+                    SELECT exercise_id, display_order, notes, default_rest_seconds, target_set_count, default_set_type,
+                        target_rep_min, target_rep_max, target_weight_kg, target_duration_seconds, target_distance_km
                     FROM workout_template_exercise
                     WHERE workout_template_id = ? AND deleted_at IS NULL
                     ORDER BY display_order ASC
-                """,
+                    """,
                 arguments: [templateId]
             )
 
@@ -106,11 +110,18 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                 let rest: Int? = r["default_rest_seconds"]
                 let targetSets: Int? = r["target_set_count"]
                 let defaultSetType: String? = r["default_set_type"]
-                let mode: String = try String.fetchOne(
-                    db,
-                    sql: "SELECT exercise_mode FROM exercise WHERE id = ?",
-                    arguments: [exerciseId]
-                ) ?? ExerciseMode.weightReps.rawValue
+                let repMin: Int? = r["target_rep_min"]
+                let repMax: Int? = r["target_rep_max"]
+                let tplWeight: Double? = r["target_weight_kg"]
+                let tplDur: Int? = r["target_duration_seconds"]
+                let tplDist: Double? = r["target_distance_km"]
+                let modeEnum = ExerciseMode(
+                    rawValue: try String.fetchOne(
+                        db,
+                        sql: "SELECT exercise_mode FROM exercise WHERE id = ?",
+                        arguments: [exerciseId]
+                    ) ?? ExerciseMode.weightReps.rawValue
+                ) ?? .weightReps
 
                 let wseId = UUID().uuidString
                 try db.execute(
@@ -119,22 +130,34 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                             id, workout_session_id, exercise_id, block_id, display_order, notes,
                             exercise_mode, target_rest_seconds, is_collapsed, created_at, updated_at
                         ) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, 0, ?, ?)
-                    """,
-                    arguments: [wseId, sessionId, exerciseId, order, notes, mode, rest, now, now]
+                        """,
+                    arguments: [wseId, sessionId, exerciseId, order, notes, modeEnum.rawValue, rest, now, now]
                 )
 
                 let count = max(targetSets ?? 3, 1)
                 let setType = SetType(rawValue: defaultSetType ?? "") ?? .normal
+                let repSeed = Self.resolvedTemplateRepTarget(min: repMin, max: repMax)
                 for idx in 0 ..< count {
                     let setId = UUID().uuidString
+                    let (weightKg, reps, distanceKm, durationSeconds) = Self.plannedSetPayload(
+                        mode: modeEnum,
+                        templateWeightKg: tplWeight,
+                        templateReps: repSeed,
+                        templateDurationSeconds: tplDur,
+                        templateDistanceKm: tplDist
+                    )
                     try db.execute(
                         sql: """
                             INSERT INTO set_entry (
                                 id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
+                                weight_kg, reps, distance_km, duration_seconds,
                                 created_at, updated_at
-                            ) VALUES (?, ?, ?, ?, ?, 'planned', ?, ?)
-                        """,
-                        arguments: [setId, wseId, exerciseId, idx, setType.rawValue, now, now]
+                            ) VALUES (?, ?, ?, ?, ?, 'planned', ?, ?, ?, ?, ?, ?)
+                            """,
+                        arguments: [
+                            setId, wseId, exerciseId, idx, setType.rawValue,
+                            weightKg, reps, distanceKm, durationSeconds, now, now
+                        ]
                     )
                 }
             }
@@ -1240,6 +1263,51 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
         )
     }
 
+    private static func assertNoActiveSession(db: Database) throws {
+        let n = try Int.fetchOne(
+            db,
+            sql: """
+                SELECT COUNT(*)
+                FROM workout_session ws
+                JOIN active_workout_state aws ON aws.workout_session_id = ws.id
+                WHERE ws.status = 'active' AND ws.deleted_at IS NULL
+                """
+        ) ?? 0
+        if n > 0 { throw RepositoryError.activeSessionAlreadyExists }
+    }
+
+    private static func resolvedTemplateRepTarget(min: Int?, max: Int?) -> Int? {
+        switch (min, max) {
+        case let (a?, b?):
+            return (a + b) / 2
+        case let (a?, nil):
+            return a
+        case let (nil, b?):
+            return b
+        default:
+            return nil
+        }
+    }
+
+    private static func plannedSetPayload(
+        mode: ExerciseMode,
+        templateWeightKg: Double?,
+        templateReps: Int?,
+        templateDurationSeconds: Int?,
+        templateDistanceKm: Double?
+    ) -> (Double?, Int?, Double?, Int?) {
+        switch mode {
+        case .weightReps:
+            return (templateWeightKg, templateReps, nil, nil)
+        case .bodyweightReps:
+            return (nil, templateReps, nil, nil)
+        case .duration:
+            return (nil, nil, nil, templateDurationSeconds)
+        case .distanceDuration:
+            return (nil, nil, templateDistanceKm, templateDurationSeconds)
+        }
+    }
+
     private func insertActiveState(db: Database, sessionId: String, now: String) throws {
         try db.execute(
             sql: """
@@ -1257,6 +1325,21 @@ enum RepositoryError: Error {
     case notFound
     /// New exercise `exercise_mode` does not match the slot being replaced (set rows stay typed by mode).
     case invalidExerciseReplacement
+    /// At most one `active` workout with `active_workout_state` may exist.
+    case activeSessionAlreadyExists
+}
+
+extension RepositoryError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .notFound:
+            return "That item could not be found."
+        case .invalidExerciseReplacement:
+            return "That exercise type doesn’t match this slot."
+        case .activeSessionAlreadyExists:
+            return "You already have a workout in progress. Continue it from Home or finish it first."
+        }
+    }
 }
 
 enum ActiveWorkoutStateRepository {

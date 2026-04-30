@@ -11,7 +11,9 @@ final class WatchActiveWorkoutSnapshotTests: XCTestCase {
             completedSetCount: 3,
             restEndsAt: "2026-04-29T12:05:30Z",
             restStartedAt: "2026-04-29T12:05:00Z",
-            healthSyncEnabled: true
+            healthSyncEnabled: true,
+            watchRunsHealthKitSession: true,
+            watchConnectivitySchemaVersion: WatchActiveWorkoutSnapshot.currentWatchConnectivitySchemaVersion
         )
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(WatchActiveWorkoutSnapshot.self, from: data)
@@ -34,5 +36,50 @@ final class WatchActiveWorkoutSnapshotTests: XCTestCase {
         XCTAssertEqual(obj["phase"] as? String, "idle")
         XCTAssertEqual(obj["healthSyncEnabled"] as? Bool, false)
         XCTAssertEqual(obj["completedSetCount"] as? Int, 0)
+        XCTAssertEqual(obj["watchConnectivitySchemaVersion"] as? Int, WatchActiveWorkoutSnapshot.currentWatchConnectivitySchemaVersion)
+    }
+
+    func testDecodeLegacyJSONWithoutSchemaVersion() throws {
+        let json = """
+        {"sessionId":"legacy","workoutStartedAt":null,"phase":"active","currentExerciseName":"x","completedSetCount":0,"restEndsAt":null,"restStartedAt":null,"healthSyncEnabled":true}
+        """
+        let data = try XCTUnwrap(json.data(using: .utf8))
+        let decoded = try JSONDecoder().decode(WatchActiveWorkoutSnapshot.self, from: data)
+        XCTAssertEqual(decoded.watchConnectivitySchemaVersion, 1)
+    }
+
+    func testWatchRunsHealthKitSessionTriStateRoundTrip() throws {
+        let explicitFalse = WatchActiveWorkoutSnapshot(
+            sessionId: "s2",
+            workoutStartedAt: nil,
+            phase: .active,
+            currentExerciseName: "Pull-up",
+            completedSetCount: 1,
+            restEndsAt: nil,
+            restStartedAt: nil,
+            healthSyncEnabled: true,
+            watchRunsHealthKitSession: false
+        )
+        let dataFalse = try JSONEncoder().encode(explicitFalse)
+        let decodedFalse = try JSONDecoder().decode(WatchActiveWorkoutSnapshot.self, from: dataFalse)
+        XCTAssertEqual(decodedFalse.watchRunsHealthKitSession, false)
+
+        let omit = WatchActiveWorkoutSnapshot(
+            sessionId: "s2",
+            workoutStartedAt: nil,
+            phase: .active,
+            currentExerciseName: "Pull-up",
+            completedSetCount: 1,
+            restEndsAt: nil,
+            restStartedAt: nil,
+            healthSyncEnabled: true
+        )
+        let dataOmit = try JSONEncoder().encode(omit)
+        let decodedOmit = try JSONDecoder().decode(WatchActiveWorkoutSnapshot.self, from: dataOmit)
+        XCTAssertNil(decodedOmit.watchRunsHealthKitSession)
     }
 }
+
+// MARK: - Manual device QA (Watch integration)
+// Physical Watch + iPhone: start workout with Health sync on; confirm live BPM on iPhone within ~25s;
+// background phone and wake Watch from sleep; finish workout and verify a single Strength Training workout in Health.

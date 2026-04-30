@@ -105,6 +105,33 @@ final class HealthRecoveryService: ObservableObject {
         )
     }
 
+    /// Per-day asleep hours (last `days` local calendar days) for the Home chart. Requires recovery insights enabled.
+    func fetchRecentSleepDayBars(days: Int = 14) async -> [ReadinessSleepDayPoint] {
+        guard recoveryInsightsEnabled, isHealthDataAvailable else { return [] }
+        let cal = Calendar.current
+        let now = Date()
+        let startOfToday = cal.startOfDay(for: now)
+        guard let windowStart = cal.date(byAdding: .day, value: -(max(days, 1) + 1), to: startOfToday) else { return [] }
+        let map = await sleepSecondsByWakeCalendarDay(from: windowStart, to: now)
+
+        var points: [ReadinessSleepDayPoint] = []
+        for offset in (0 ..< days).reversed() {
+            guard let day = cal.date(byAdding: .day, value: -offset, to: startOfToday) else { continue }
+            let key = ReadinessNormsStore.dayKey(for: day, calendar: cal)
+            let secs = map[key] ?? 0
+            let label = day.formatted(.dateTime.month(.abbreviated).day())
+            points.append(
+                ReadinessSleepDayPoint(
+                    dayKey: key,
+                    shortLabel: label,
+                    sortDate: day,
+                    sleepHours: secs / 3600.0
+                )
+            )
+        }
+        return points
+    }
+
     // MARK: - Private
 
     private func sumSleepAsleepSeconds(from start: Date, to end: Date) async -> TimeInterval {
@@ -122,6 +149,29 @@ final class HealthRecoveryService: ObservableObject {
                     total += s.endDate.timeIntervalSince(s.startDate)
                 }
                 continuation.resume(returning: total)
+            }
+            store.execute(query)
+        }
+    }
+
+    /// Sums asleep time per local calendar day, using the **end** of each sleep segment (wake day).
+    private func sleepSecondsByWakeCalendarDay(from start: Date, to end: Date) async -> [String: TimeInterval] {
+        await withCheckedContinuation { continuation in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
+            let query = HKSampleQuery(
+                sampleType: sleepType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)]
+            ) { _, samples, _ in
+                let cats = (samples as? [HKCategorySample]) ?? []
+                var map: [String: TimeInterval] = [:]
+                let cal = Calendar.current
+                for s in cats where Self.isAsleepSleepSample(s) {
+                    let key = ReadinessNormsStore.dayKey(for: s.endDate, calendar: cal)
+                    map[key, default: 0] += s.endDate.timeIntervalSince(s.startDate)
+                }
+                continuation.resume(returning: map)
             }
             store.execute(query)
         }

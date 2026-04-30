@@ -71,6 +71,10 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
             let canonical: String = anchor["canonical_name"]
             let mode: String = anchor["exercise_mode"]
             let primary: String? = anchor["primary_muscle_group"]
+            let primaryNorm = primary?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            let anchorTokens = Self.significantNameTokens(display)
             let anchorBucket = ExerciseMuscleBucket.bucket(
                 primaryMuscle: primary,
                 displayName: display,
@@ -88,13 +92,18 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
                 arguments: [forExerciseId, mode]
             )
 
-            var preferred: [ExerciseSummary] = []
-            var other: [ExerciseSummary] = []
+            var scored: [(ExerciseSummary, Int)] = []
+            scored.reserveCapacity(rows.count)
             for row in rows {
                 let secJSON: String = (row["secondary_muscle_groups_json"] as String?) ?? "[]"
+                let rowDisplay: String = row["display_name"]
+                let rowPrimary: String? = row["primary_muscle_group"]
+                let rowPrimaryNorm = rowPrimary?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .lowercased()
                 let cb = ExerciseMuscleBucket.bucket(
-                    primaryMuscle: row["primary_muscle_group"] as String?,
-                    displayName: row["display_name"] as String,
+                    primaryMuscle: rowPrimary,
+                    displayName: rowDisplay,
                     canonicalName: row["canonical_name"] as String
                 )
                 let secHit = ExerciseMuscleBucket.secondaryJSONMatchesBucket(secJSON, bucket: anchorBucket)
@@ -105,22 +114,22 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
                     isCustom: (row["is_custom"] as Int?) == 1,
                     primaryMuscleGroup: row["primary_muscle_group"]
                 )
-                if anchorBucket == .unknown {
-                    other.append(summary)
-                } else if cb == anchorBucket || secHit {
-                    preferred.append(summary)
-                } else {
-                    other.append(summary)
+                var rank = 1000
+                if let a = primaryNorm, let b = rowPrimaryNorm, a == b { rank -= 200 }
+                if cb == anchorBucket, anchorBucket != .unknown { rank -= 120 }
+                if secHit, anchorBucket != .unknown { rank -= 60 }
+                let tokenHits = Self.significantNameTokens(rowDisplay).intersection(anchorTokens).count
+                rank -= min(50, tokenHits * 10)
+                if anchorBucket != .unknown, cb != anchorBucket, !secHit, primaryNorm != rowPrimaryNorm {
+                    rank += 80
                 }
+                scored.append((summary, rank))
             }
-
-            var combined: [ExerciseSummary] = []
-            var seen = Set<String>()
-            for s in preferred + other where seen.insert(s.id).inserted {
-                combined.append(s)
-                if combined.count >= limit { break }
+            scored.sort { a, b in
+                if a.1 != b.1 { return a.1 < b.1 }
+                return a.0.displayName.localizedCaseInsensitiveCompare(b.0.displayName) == .orderedAscending
             }
-            return combined
+            return scored.prefix(limit).map(\.0)
         }
     }
 
@@ -208,6 +217,12 @@ public final class ExerciseRepository: ExerciseRepositoryProtocol {
                 arguments: [key, key, key]
             )
         }
+    }
+
+    /// Words longer than two characters for loose “same movement” name overlap ranking.
+    private static func significantNameTokens(_ name: String) -> Set<String> {
+        let parts = name.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init)
+        return Set(parts.filter { $0.count > 2 })
     }
 
     private static func fetchSummaries(_ db: Database, sql: String, arguments: StatementArguments = .init()) throws -> [ExerciseSummary] {

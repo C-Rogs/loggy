@@ -3,6 +3,9 @@ import Foundation
 extension Notification.Name {
     /// Posted after a `loggy://` live workout URL mutates the active session (so in-app UI can reload).
     static let loggyActiveWorkoutMutated = Notification.Name("loggyActiveWorkoutMutated")
+
+    /// Posted on iPhone when `WCSession.isReachable` becomes true (Watch woke / Loggy opened on Watch).
+    static let loggyWatchReachabilityDidBecomeReachable = Notification.Name("loggyWatchReachabilityDidBecomeReachable")
 }
 
 /// `loggy://workout/live-action?...` URLs opened from the Live Activity (lock screen).

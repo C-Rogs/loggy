@@ -1,5 +1,6 @@
 import Charts
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 struct HomeView: View {
@@ -21,6 +22,8 @@ struct HomeView: View {
     @State private var isImporting = false
     @State private var showImporter = false
     @State private var showSettings = false
+    @State private var showWorkoutHealthAuthAlert = false
+    @State private var workoutHealthAuthMessage = ""
     @State private var showCoachStart = false
     @State private var coachTitleDraft: String = ""
     @State private var exportDocument: CSVExportDocument?
@@ -29,6 +32,7 @@ struct HomeView: View {
     @State private var showActiveWorkoutBlockedAlert = false
     @State private var readinessInsight: ReadinessInsight?
     @State private var readinessLoading = false
+    @State private var sleepDayBars: [ReadinessSleepDayPoint] = []
     @State private var showReadinessLearnMore = false
     @State private var coachReadinessInsight: ReadinessInsight?
     @State private var coachReadinessLoading = false
@@ -58,6 +62,117 @@ struct HomeView: View {
         }
     }
 
+    private static func pathHasLiveWorkoutSession(_ path: [HomeRoute]) -> Bool {
+        path.contains { route in
+            switch route {
+            case .active, .editor: return true
+            case .history, .templates, .templateDetail: return false
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var readinessSection: some View {
+        if healthRecovery.recoveryInsightsEnabled {
+            Section {
+                ReadinessHeroView(
+                    insight: readinessInsight,
+                    isLoading: readinessLoading,
+                    onLearnMore: { showReadinessLearnMore = true }
+                )
+                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                .listRowBackground(Color.clear)
+
+                if !sleepDayBars.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Recent sleep")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        ReadinessRecentSleepChart(bars: sleepDayBars)
+                        Text(
+                            "Bars show asleep time summed per wake-up day from Apple Health. Readiness scoring compares that sleep window to short/solid thresholds (personalized after enough data) and blends in HRV vs your baseline."
+                        )
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.vertical, 4)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 10, trailing: 16))
+                    .listRowBackground(Color.clear)
+                }
+            } header: {
+                Text("Readiness")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var activeWorkoutSection: some View {
+        if let active = home.activeSummary {
+            Section {
+                ActiveSessionHomeContinueSection(active: active)
+            }
+            .listRowBackground(activeSessionHighlightBackground)
+        }
+    }
+
+    private var activeSessionHighlightBackground: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(
+                LoggyTheme.isOLEDDarkCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme)
+                    ? Color.green.opacity(0.18)
+                    : Color.green.opacity(0.12)
+            )
+    }
+
+    @ViewBuilder
+    private var weeklyVolumeSection: some View {
+        if !home.weeklyVolume.isEmpty {
+            Section {
+                Chart(home.weeklyVolume) { row in
+                    BarMark(
+                        x: .value("Week", row.weekKey),
+                        y: .value("kg", row.totalKg)
+                    )
+                    .foregroundStyle(.indigo.gradient)
+                }
+                .frame(height: 200)
+                .accessibilityLabel("Completed training volume by calendar week")
+                Text("Completed workout volume by calendar week (last ~4 months).")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Weekly volume")
+            }
+            .listRowBackground(Color.clear)
+        }
+    }
+
+    @ViewBuilder
+    private var pastWorkoutsSection: some View {
+        Section {
+            if home.completed.isEmpty {
+                Text("When you finish a workout, it appears here. Start one from Coach below.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .listRowBackground(Color.clear)
+            } else if filteredPastWorkouts.isEmpty {
+                Text("No workouts match your search.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .listRowBackground(Color.clear)
+            } else {
+                ForEach(filteredPastWorkouts) { item in
+                    NavigationLink(value: HomeRoute.history(item.id)) {
+                        PastWorkoutRowContents(item: item)
+                    }
+                }
+            }
+        } header: {
+            Text("Past workouts")
+        }
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             List {
@@ -71,41 +186,9 @@ struct HomeView: View {
                     }
                 }
 
-                if healthRecovery.recoveryInsightsEnabled {
-                    Section {
-                        ReadinessHeroView(
-                            insight: readinessInsight,
-                            isLoading: readinessLoading,
-                            onLearnMore: { showReadinessLearnMore = true }
-                        )
-                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                        .listRowBackground(Color.clear)
-                    } header: {
-                        Text("Readiness")
-                    }
-                }
+                readinessSection
 
-                if let active = home.activeSummary {
-                    Section {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(active.title?.isEmpty == false ? active.title! : "Untitled workout")
-                                .font(.headline)
-                            Text("Started \(active.startedAt.formatted(date: .abbreviated, time: .shortened))")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            NavigationLink("Continue", value: HomeRoute.active(active.sessionId))
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    .listRowBackground(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(
-                                LoggyTheme.isOLEDDarkCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme)
-                                    ? Color.green.opacity(0.18)
-                                    : Color.green.opacity(0.12)
-                            )
-                    )
-                }
+                activeWorkoutSection
 
                 Section {
                     Button {
@@ -148,29 +231,11 @@ struct HomeView: View {
                 }
                 .listRowBackground(Color.clear)
 
-                if !home.weeklyVolume.isEmpty {
-                    Section {
-                        Chart(home.weeklyVolume) { row in
-                            BarMark(
-                                x: .value("Week", row.weekKey),
-                                y: .value("kg", row.totalKg)
-                            )
-                            .foregroundStyle(.indigo.gradient)
-                        }
-                        .frame(height: 200)
-                        .accessibilityLabel("Completed training volume by calendar week")
-                        Text("Completed workout volume by calendar week (last ~4 months).")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    } header: {
-                        Text("Weekly volume")
-                    }
-                    .listRowBackground(Color.clear)
-                }
+                weeklyVolumeSection
 
                 Section {
-                    NavigationLink("Templates") {
-                        TemplatesView()
+                    NavigationLink(value: HomeRoute.templates) {
+                        Text("Templates")
                     }
                     NavigationLink("Exercise directory") {
                         ExerciseDirectoryView()
@@ -186,35 +251,7 @@ struct HomeView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section {
-                    if home.completed.isEmpty {
-                        Text("When you finish a workout, it appears here. Start one from Coach below.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .listRowBackground(Color.clear)
-                    } else if filteredPastWorkouts.isEmpty {
-                        Text("No workouts match your search.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .listRowBackground(Color.clear)
-                    } else {
-                        ForEach(filteredPastWorkouts) { item in
-                            NavigationLink(value: HomeRoute.history(item.id)) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(item.title?.isEmpty == false ? item.title! : "Workout")
-                                    Text(item.startedAt.formatted(date: .abbreviated, time: .shortened))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Text("Volume \(Int(item.totalVolumeKg)) kg · \(item.totalSetCount) sets")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Past workouts")
-                }
+                pastWorkoutsSection
             }
             .searchable(text: $pastWorkoutsSearch, prompt: "Search past workouts")
             .refreshable {
@@ -232,6 +269,17 @@ struct HomeView: View {
                     WorkoutSessionAnalysisView(homePath: $path, sessionId: id)
                 case let .editor(id):
                     ActiveWorkoutView(sessionId: id, env: env)
+                case .templates:
+                    TemplatesView()
+                        .environmentObject(env)
+                case let .templateDetail(templateId):
+                    TemplateDetailView(templateId: templateId, homePath: $path)
+                        .environmentObject(env)
+                }
+            }
+            .onChange(of: path) { oldPath, newPath in
+                if Self.pathHasLiveWorkoutSession(oldPath), !Self.pathHasLiveWorkoutSession(newPath) {
+                    try? home.refresh(env: env)
                 }
             }
             .navigationBarTitleDisplayMode(.large)
@@ -326,7 +374,12 @@ struct HomeView: View {
                                 set: { appleHealth.setSyncWorkoutsToHealthEnabled($0) }
                             ))
                             Button("Allow workout & heart-rate access…") {
-                                Task { await appleHealth.requestAuthorization() }
+                                Task { @MainActor in
+                                    if let msg = await appleHealth.requestWorkoutHealthAccessFromSettings() {
+                                        workoutHealthAuthMessage = msg
+                                        showWorkoutHealthAuthAlert = true
+                                    }
+                                }
                             }
                             Text("Saves strength-training workouts plus a rough active-energy estimate for Activity rings. BPM and post-workout charts read from Health (usually written by Apple Watch) during an active session.")
                                 .font(.caption)
@@ -385,6 +438,16 @@ struct HomeView: View {
                         for: .navigationBar
                     )
                     .toolbarBackground(.visible, for: .navigationBar)
+                }
+                .alert("Apple Health", isPresented: $showWorkoutHealthAuthAlert) {
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    }
+                    Button("OK", role: .cancel) {}
+                } message: {
+                    Text(workoutHealthAuthMessage)
                 }
                 .environment(\.loggyOLEDDarkUserPreference, loggyOLEDDark)
             }
@@ -561,21 +624,31 @@ struct HomeView: View {
     private func refreshReadinessHero() async {
         guard healthRecovery.recoveryInsightsEnabled else {
             readinessInsight = nil
+            sleepDayBars = []
             readinessLoading = false
             return
         }
         readinessLoading = true
-        readinessInsight = await healthRecovery.fetchReadinessInsight()
+        async let insight = healthRecovery.fetchReadinessInsight()
+        async let bars = healthRecovery.fetchRecentSleepDayBars(days: 14)
+        let got = await (insight, bars)
+        readinessInsight = got.0
+        sleepDayBars = got.1
         readinessLoading = false
     }
 
     private func startWithCoachTitle() {
         guard home.activeSummary == nil else { return }
         let title = coachTitleDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let id = try? env.workouts.createEmptyActiveSession(title: title.isEmpty ? nil : title) {
+        do {
+            let id = try env.workouts.createEmptyActiveSession(title: title.isEmpty ? nil : title)
             LoggyFeedback.primaryActionTap()
             showCoachStart = false
             path.append(.active(id))
+        } catch RepositoryError.activeSessionAlreadyExists {
+            showActiveWorkoutBlockedAlert = true
+        } catch {
+            // Unexpected — surface generic failure only if we add messaging later.
         }
     }
 
@@ -585,9 +658,13 @@ struct HomeView: View {
             showActiveWorkoutBlockedAlert = true
             return
         }
-        if let id = try? env.workouts.createEmptyActiveSession(title: nil) {
+        do {
+            let id = try env.workouts.createEmptyActiveSession(title: nil)
             LoggyFeedback.primaryActionTap()
             path.append(.active(id))
+        } catch RepositoryError.activeSessionAlreadyExists {
+            showActiveWorkoutBlockedAlert = true
+        } catch {
         }
     }
 
@@ -599,6 +676,72 @@ struct HomeView: View {
         } catch {
             exportError = UserFacingError.message(for: error)
         }
+    }
+}
+
+// MARK: - Home readiness chart & active session row
+
+private struct ActiveSessionHomeContinueSection: View {
+    let active: ActiveWorkoutSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(displayTitle)
+                .font(.headline)
+            Text("Started \(active.startedAt.formatted(date: .abbreviated, time: .shortened))")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            NavigationLink("Continue", value: HomeRoute.active(active.sessionId))
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var displayTitle: String {
+        let t = active.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return t.isEmpty ? "Untitled workout" : t
+    }
+}
+
+private struct ReadinessRecentSleepChart: View {
+    let bars: [ReadinessSleepDayPoint]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            Chart(bars) { day in
+                BarMark(
+                    x: .value("Day", day.shortLabel),
+                    y: .value("Hours", day.sleepHours)
+                )
+                .foregroundStyle(.teal.gradient)
+            }
+            .frame(width: chartWidth, height: 120)
+            .chartYAxisLabel("Hours")
+        }
+    }
+
+    private var chartWidth: CGFloat {
+        max(CGFloat(bars.count) * 36, 280)
+    }
+}
+
+private struct PastWorkoutRowContents: View {
+    let item: WorkoutListItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(titleLine)
+            Text(item.startedAt.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("Volume \(Int(item.totalVolumeKg)) kg · \(item.totalSetCount) sets")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var titleLine: String {
+        let t = item.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return t.isEmpty ? "Workout" : t
     }
 }
 

@@ -11,4 +11,9 @@ final class UserFacingErrorTests: XCTestCase {
         let m = UserFacingError.message(for: ExportError.encodingFailed)
         XCTAssertFalse(m.isEmpty)
     }
+
+    func testRepositoryActiveSessionUsesLocalizedDescription() {
+        let m = UserFacingError.message(for: RepositoryError.activeSessionAlreadyExists)
+        XCTAssertTrue(m.contains("workout") || m.contains("progress"), "Expected actionable copy, got: \(m)")
+    }
 }

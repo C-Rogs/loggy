@@ -52,7 +52,6 @@ final class ActiveWorkoutViewModel: ObservableObject {
     private var scheduledRestEndWorkItem: DispatchWorkItem?
     private var pendingRestNotificationKey: String?
     private var lastWatchPushAt: Date = .distantPast
-    private var watchHKHandoffRetryTick: Int = 0
 
     init(sessionId: String, env: AppEnvironment) {
         self.sessionId = sessionId
@@ -94,7 +93,8 @@ final class ActiveWorkoutViewModel: ObservableObject {
         let bpm = h.latestHeartRateBpm.map(String.init) ?? "-"
         let kcal = h.cumulativeActiveEnergyHealthKitKcal.map { String(format: "%.2f", $0) } ?? "-"
         let tip = h.heartRateAvailabilityTipForLiveActivity() ?? ""
-        return "\(bpm)|\(kcal)|\(tip)"
+        let authEpoch = h.healthAuthorizationRefreshEpoch
+        return "\(bpm)|\(kcal)|\(tip)|\(authEpoch)"
     }
 
     func reload() {
@@ -394,12 +394,6 @@ final class ActiveWorkoutViewModel: ObservableObject {
         }
         if sessionStatus == .active {
             pushWatchConnectivitySnapshot(force: false)
-            if env.appleHealth.syncWorkoutsToHealthEnabled {
-                watchHKHandoffRetryTick += 1
-                if watchHKHandoffRetryTick % 12 == 0 {
-                    Task { await env.appleHealth.retryHandoffFromPhoneBuilderToWatch(sessionId: sessionId) }
-                }
-            }
         }
     }
 
@@ -654,9 +648,14 @@ final class ActiveWorkoutViewModel: ObservableObject {
                 completedSetCount: 0,
                 restEndsAt: nil,
                 restStartedAt: nil,
-                healthSyncEnabled: false
-            )
+            healthSyncEnabled: false
         )
+        )
+    }
+
+    /// Flushes mirror state after returning from Settings / Health so Watch Connectivity picks up immediately.
+    func pushWatchSnapshotAfterForeground() {
+        pushWatchConnectivitySnapshot(force: true)
     }
 
     private func makeWatchSnapshot() -> WatchActiveWorkoutSnapshot {
@@ -668,7 +667,8 @@ final class ActiveWorkoutViewModel: ObservableObject {
             completedSetCount: completedSetCount,
             restEndsAt: restTimerVisual.map { ISO8601UTC.string(from: $0.endsAt) },
             restStartedAt: restTimerVisual.map { ISO8601UTC.string(from: $0.startedAt) },
-            healthSyncEnabled: env.appleHealth.syncWorkoutsToHealthEnabled
+            healthSyncEnabled: env.appleHealth.syncWorkoutsToHealthEnabled,
+            watchRunsHealthKitSession: env.appleHealth.watchHealthKitSnapshotHint
         )
     }
 

@@ -8,6 +8,20 @@ final class WatchHealthWorkoutSessionController: NSObject {
     private var workoutBuilder: HKLiveWorkoutBuilder?
     private var workoutSession: HKWorkoutSession?
     private var collectionStart: Date?
+    /// Loggy session id bound to the running Watch HK session (for idempotent starts).
+    private var activeLoggySessionId: String?
+
+    private var pendingSessionStartDate: Date?
+    private var pendingStartOutcomeContinuation: CheckedContinuation<Bool, Never>?
+    private var didIssueStartActivityFromPreparedState = false
+    private var didBeginCollectionForRunningState = false
+
+    /// Forwards HR read from the live builder (throttled) — primary path for iPhone BPM vs HealthKit sync delay.
+    var onLiveHeartRate: ((Int, Date) -> Void)?
+    private var lastLiveHeartForwardAt: Date = .distantPast
+    private let liveHeartForwardMinInterval: TimeInterval = 2.0
+
+    private var lastStoreHeartFallbackAt: Date = .distantPast
 
     func requestAuthorization() async {
         guard HKHealthStore.isHealthDataAvailable() else { return }
@@ -24,17 +38,29 @@ final class WatchHealthWorkoutSessionController: NSObject {
         } catch {}
     }
 
+    /// True when this session id already has a live HK workout (HealthKit launch + WC handoff can both try to start).
+    func isActiveForLoggySession(sessionId: String) -> Bool {
+        activeLoggySessionId == sessionId && workoutSession != nil && workoutBuilder != nil
+    }
+
     /// Starts collection for the Loggy session. Returns false if HealthKit refused or builder failed.
-    func start(sessionId _: String, startedAt: Date) async -> Bool {
+    /// Pass `workoutConfiguration` from ``WKApplicationDelegate/handle(_:)-1pfoc`` when HealthKit launches the Watch app so the session matches `startWatchApp(toHandle:)`.
+    func start(sessionId: String, startedAt: Date, workoutConfiguration: HKWorkoutConfiguration? = nil) async -> Bool {
         guard HKHealthStore.isHealthDataAvailable() else { return false }
         await requestAuthorization()
         guard store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else { return false }
 
+        if activeLoggySessionId == sessionId, workoutSession != nil {
+            return true
+        }
+
         resetBeforeNewStart()
 
-        let configuration = HKWorkoutConfiguration()
-        configuration.activityType = .traditionalStrengthTraining
-        configuration.locationType = .indoor
+        let configuration = workoutConfiguration ?? Self.defaultStrengthConfiguration()
+        if workoutConfiguration == nil {
+            configuration.activityType = .traditionalStrengthTraining
+            configuration.locationType = .indoor
+        }
 
         do {
             let session = try HKWorkoutSession(healthStore: store, configuration: configuration)
@@ -42,21 +68,43 @@ final class WatchHealthWorkoutSessionController: NSObject {
             workoutSession = session
             workoutBuilder = builder
             collectionStart = startedAt
+            activeLoggySessionId = sessionId
             session.delegate = self
             builder.delegate = self
 
-            session.prepare()
-            session.startActivity(with: startedAt)
+            pendingSessionStartDate = startedAt
+            didIssueStartActivityFromPreparedState = false
+            didBeginCollectionForRunningState = false
 
             return await withCheckedContinuation { continuation in
-                builder.beginCollection(withStart: startedAt) { success, _ in
-                    Task { @MainActor in
-                        continuation.resume(returning: success)
-                    }
-                }
+                pendingStartOutcomeContinuation = continuation
+                session.prepare()
             }
         } catch {
+            activeLoggySessionId = nil
+            resumePendingStartIfNeeded(success: false)
             return false
+        }
+    }
+
+    private func resumePendingStartIfNeeded(success: Bool) {
+        pendingStartOutcomeContinuation?.resume(returning: success)
+        pendingStartOutcomeContinuation = nil
+    }
+
+    private static func defaultStrengthConfiguration() -> HKWorkoutConfiguration {
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = .traditionalStrengthTraining
+        configuration.locationType = .indoor
+        return configuration
+    }
+
+    /// After ``HKHealthStore/startWatchApp(toHandle:)`` on iPhone, mirror state so the phone can attach to the same workout (WWDC multi-device flow).
+    private func startMirroringToCompanionPhoneIfAvailable(_ session: HKWorkoutSession) async {
+        do {
+            try await session.startMirroringToCompanionDevice()
+        } catch {
+            // Non-fatal: HR can still stream on Watch; mirroring improves phone-side session continuity.
         }
     }
 
@@ -80,20 +128,36 @@ final class WatchHealthWorkoutSessionController: NSObject {
     }
 
     func discard() {
+        lastStoreHeartFallbackAt = .distantPast
+        lastLiveHeartForwardAt = .distantPast
+        resumePendingStartIfNeeded(success: false)
         workoutBuilder?.discardWorkout()
         endWorkoutSessionIfLive()
         workoutBuilder = nil
         workoutSession = nil
         collectionStart = nil
+        activeLoggySessionId = nil
+        clearPreparePipelineState()
     }
 
     /// Clears any prior Watch HK session before starting a new Loggy-linked workout.
     private func resetBeforeNewStart() {
+        lastStoreHeartFallbackAt = .distantPast
+        lastLiveHeartForwardAt = .distantPast
+        resumePendingStartIfNeeded(success: false)
         workoutBuilder?.discardWorkout()
         endWorkoutSessionIfLive()
         workoutBuilder = nil
         workoutSession = nil
         collectionStart = nil
+        activeLoggySessionId = nil
+        clearPreparePipelineState()
+    }
+
+    private func clearPreparePipelineState() {
+        pendingSessionStartDate = nil
+        didIssueStartActivityFromPreparedState = false
+        didBeginCollectionForRunningState = false
     }
 
     private func tearDownAfterFinish() {
@@ -101,6 +165,8 @@ final class WatchHealthWorkoutSessionController: NSObject {
         workoutBuilder = nil
         workoutSession = nil
         collectionStart = nil
+        activeLoggySessionId = nil
+        clearPreparePipelineState()
     }
 
     /// Ensures the running `HKWorkoutSession` is ended after discard or builder failure so sensors/session state don’t leak.
@@ -137,21 +203,91 @@ extension WatchHealthWorkoutSessionController: HKWorkoutSessionDelegate {
         didChangeTo toState: HKWorkoutSessionState,
         from fromState: HKWorkoutSessionState,
         date: Date
-    ) {}
+    ) {
+        Task { @MainActor in
+            await self.handleWorkoutSessionStateChange(workoutSession: workoutSession, toState: toState)
+        }
+    }
+
+    private func handleWorkoutSessionStateChange(workoutSession: HKWorkoutSession, toState: HKWorkoutSessionState) async {
+        switch toState {
+        case .prepared:
+            guard !didIssueStartActivityFromPreparedState else { return }
+            didIssueStartActivityFromPreparedState = true
+            await startMirroringToCompanionPhoneIfAvailable(workoutSession)
+            workoutSession.startActivity(with: pendingSessionStartDate ?? Date())
+        case .running:
+            guard !didBeginCollectionForRunningState else { return }
+            guard let builder = workoutBuilder, let start = pendingSessionStartDate else {
+                resumePendingStartIfNeeded(success: false)
+                return
+            }
+            didBeginCollectionForRunningState = true
+            builder.beginCollection(withStart: start) { success, _ in
+                Task { @MainActor in
+                    self.resumePendingStartIfNeeded(success: success)
+                }
+            }
+        case .ended, .stopped:
+            resumePendingStartIfNeeded(success: false)
+        default:
+            break
+        }
+    }
 
     nonisolated func workoutSession(_ session: HKWorkoutSession, didFailWithError error: Error) {
         Task { @MainActor in
+            self.resumePendingStartIfNeeded(success: false)
             self.workoutBuilder?.discardWorkout()
             self.endWorkoutSessionIfLive()
             self.workoutBuilder = nil
             self.workoutSession = nil
             self.collectionStart = nil
+            self.activeLoggySessionId = nil
+            self.clearPreparePipelineState()
         }
     }
 }
 
 extension WatchHealthWorkoutSessionController: HKLiveWorkoutBuilderDelegate {
-    nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {}
+    nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
+        guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate),
+              collectedTypes.contains(hrType)
+        else { return }
+        Task { @MainActor in
+            if let quantity = workoutBuilder.statistics(for: hrType)?.mostRecentQuantity() {
+                let bpm = quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
+                let bpmInt = Int(round(bpm))
+                guard (40 ..< 230).contains(bpmInt) else { return }
+                let now = Date()
+                guard now.timeIntervalSince(self.lastLiveHeartForwardAt) >= self.liveHeartForwardMinInterval else { return }
+                self.lastLiveHeartForwardAt = now
+                self.onLiveHeartRate?(bpmInt, now)
+            } else {
+                self.forwardLatestHeartRateFromHealthStore()
+            }
+        }
+    }
+
+    /// When builder statistics lag (early in session), still forward Watch HR that is already in HealthKit.
+    private func forwardLatestHeartRateFromHealthStore() {
+        guard Date().timeIntervalSince(lastStoreHeartFallbackAt) >= 3 else { return }
+        lastStoreHeartFallbackAt = Date()
+        let type = HKQuantityType.quantityType(forIdentifier: .heartRate)!
+        let pred = HKQuery.predicateForSamples(withStart: Date().addingTimeInterval(-300), end: Date(), options: [])
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        let q = HKSampleQuery(sampleType: type, predicate: pred, limit: 1, sortDescriptors: [sort]) { [weak self] _, samples, _ in
+            Task { @MainActor in
+                guard let self, let s = samples?.first as? HKQuantitySample else { return }
+                let bpm = Int(round(s.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))))
+                guard (40 ..< 230).contains(bpm) else { return }
+                guard Date().timeIntervalSince(self.lastLiveHeartForwardAt) >= self.liveHeartForwardMinInterval else { return }
+                self.lastLiveHeartForwardAt = Date()
+                self.onLiveHeartRate?(bpm, s.endDate)
+            }
+        }
+        store.execute(q)
+    }
 
     nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
 }

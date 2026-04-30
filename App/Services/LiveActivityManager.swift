@@ -5,6 +5,37 @@ final class LiveActivityManager: @unchecked Sendable {
     @MainActor
     private var activity: Activity<WorkoutActivityAttributes>?
 
+    /// Ends Live Activities that don’t match persisted workout state (e.g. after force-quit). Keeps the Dynamic Island in sync with the database.
+    @MainActor
+    func reconcileWithDatabase(workouts: WorkoutSessionRepository) async {
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        let allowedSessionId = try? workouts.activeSessionSummary()?.sessionId
+        let all = Activity<WorkoutActivityAttributes>.activities
+
+        if let allowedSessionId {
+            var claimed = false
+            for la in all where la.attributes.workoutSessionId == allowedSessionId {
+                if !claimed {
+                    activity = la
+                    claimed = true
+                } else {
+                    await endActivity(la)
+                }
+            }
+            for la in all where la.attributes.workoutSessionId != allowedSessionId {
+                await endActivity(la)
+            }
+            if !claimed {
+                activity = nil
+            }
+        } else {
+            for la in all {
+                await endActivity(la)
+            }
+            activity = nil
+        }
+    }
+
     /// Starts a Live Activity for `sessionId`, replacing any existing activity bound to a different session.
     @MainActor
     func startIfNeeded(sessionId: String, workoutStartedAt: Date?) async {
@@ -54,6 +85,12 @@ final class LiveActivityManager: @unchecked Sendable {
     @MainActor
     func end() async {
         guard let activity else { return }
+        await endActivity(activity)
+        self.activity = nil
+    }
+
+    @MainActor
+    private func endActivity(_ activity: Activity<WorkoutActivityAttributes>) async {
         let final = WorkoutActivityAttributes.ContentState(
             elapsedSeconds: 0,
             completedSetCount: 0,
@@ -67,6 +104,8 @@ final class LiveActivityManager: @unchecked Sendable {
         )
         let content = ActivityContent(state: final, staleDate: nil)
         await activity.end(content, dismissalPolicy: .immediate)
-        self.activity = nil
+        if self.activity?.id == activity.id {
+            self.activity = nil
+        }
     }
 }

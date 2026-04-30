@@ -86,6 +86,16 @@ public protocol TemplateRepositoryProtocol: Sendable {
     func deleteTemplate(id: String) throws
     func addExerciseToTemplate(templateId: String, exerciseId: String) throws
     func listTemplateExercises(templateId: String) throws -> [ExerciseSummary]
+    func listTemplateExerciseRows(templateId: String) throws -> [TemplateExerciseRow]
+    func updateTemplateExerciseTargets(
+        templateExerciseId: String,
+        targetSetCount: Int?,
+        targetRepMin: Int?,
+        targetRepMax: Int?,
+        targetWeightKg: Double?,
+        targetDurationSeconds: Int?,
+        targetDistanceKm: Double?
+    ) throws
 }
 
 public protocol ImportBatchRepositoryProtocol: Sendable {

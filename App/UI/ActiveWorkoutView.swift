@@ -18,6 +18,7 @@ struct ActiveWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.loggyOLEDDarkUserPreference) private var loggyOLEDDark
+    @Environment(\.scenePhase) private var scenePhase
 
     @StateObject private var vm: ActiveWorkoutViewModel
 
@@ -169,6 +170,7 @@ struct ActiveWorkoutView: View {
                 )
                 .transition(.opacity)
                 .allowsHitTesting(false)
+                .animation(.easeInOut(duration: 0.25), value: vm.restRemaining)
             }
         }
         .overlay(alignment: .bottom) {
@@ -183,9 +185,9 @@ struct ActiveWorkoutView: View {
                 .padding(.horizontal, 14)
                 .padding(.bottom, 22)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.25), value: vm.restRemaining)
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: vm.restRemaining)
         .navigationTitle(vm.sessionStatus == .active ? " " : "Workout")
         .navigationBarTitleDisplayMode(.inline)
         .modifier(
@@ -230,6 +232,7 @@ struct ActiveWorkoutView: View {
             }
         }
         .onAppear {
+            vm.reload()
             vm.onAppear()
             if vm.sessionStatus == .active, let start = vm.sessionStartedAt {
                 appleHealth.activeWorkoutScreenAppeared(sessionId: vm.sessionId, sessionStartedAt: start)
@@ -242,6 +245,17 @@ struct ActiveWorkoutView: View {
         }
         .onReceive(appleHealth.objectWillChange) { _ in
             Task { await vm.refreshLiveActivityIfHealthGlanceChanged() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, vm.sessionStatus == .active else { return }
+            Task {
+                await appleHealth.refreshAuthorizationAndRestartHeartQuery(
+                    sessionId: vm.sessionId,
+                    sessionStartedAt: vm.sessionStartedAt
+                )
+                await vm.refreshLiveActivityIfHealthGlanceChanged()
+                vm.pushWatchSnapshotAfterForeground()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .loggyActiveWorkoutMutated)) { note in
             guard let sid = note.object as? String, sid == vm.sessionId else { return }
@@ -324,17 +338,39 @@ struct ActiveWorkoutView: View {
                 sessionExercisePendingRemoval = nil
             }
         }
-        .alert("Rename workout", isPresented: $showRenameWorkout) {
-            TextField("Workout title", text: $renameWorkoutDraft)
-            Button("Save") {
-                vm.updateSessionTitle(renameWorkoutDraft.trimmingCharacters(in: .whitespacesAndNewlines))
-                showRenameWorkout = false
+        .sheet(isPresented: $showRenameWorkout) {
+            NavigationStack {
+                Form {
+                    Section {
+                        TextField("Workout title", text: $renameWorkoutDraft)
+                    } footer: {
+                        Text("This title appears in the header and in your history.")
+                    }
+                }
+                .scrollContentBackground(.hidden)
+                .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
+                .navigationTitle("Rename workout")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { showRenameWorkout = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            vm.updateSessionTitle(renameWorkoutDraft.trimmingCharacters(in: .whitespacesAndNewlines))
+                            showRenameWorkout = false
+                        }
+                        .fontWeight(.semibold)
+                    }
+                }
+                .toolbarBackground(
+                    LoggyTheme.navigationBarBackground(oledPreference: loggyOLEDDark, colorScheme: colorScheme),
+                    for: .navigationBar
+                )
+                .toolbarBackground(.visible, for: .navigationBar)
             }
-            Button("Cancel", role: .cancel) {
-                showRenameWorkout = false
-            }
-        } message: {
-            Text("This title appears in the header and in your history.")
+            .environment(\.loggyOLEDDarkUserPreference, loggyOLEDDark)
+            .presentationDetents([.height(220)])
         }
         .sheet(isPresented: Binding(
             get: { restTargetPickerExerciseId != nil },
@@ -1270,9 +1306,9 @@ private struct SetRow: View {
     }
 
     private func syncFromSet(_ set: SetRowModel) {
-        weightText = set.weightKg.map { String($0) } ?? ""
+        weightText = LoggyMetricDisplay.kgForTextField(set.weightKg)
         repsText = set.reps.map(String.init) ?? ""
         durText = set.durationSeconds.map(String.init) ?? ""
-        distText = set.distanceKm.map { String($0) } ?? ""
+        distText = LoggyMetricDisplay.kmForTextField(set.distanceKm)
     }
 }

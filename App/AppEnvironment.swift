@@ -68,6 +68,9 @@ final class AppEnvironment: ObservableObject {
         let appleHealth = AppleHealthWorkoutService(workouts: workouts)
         let phoneWatchBridge = PhoneWatchSessionBridge()
         appleHealth.phoneWatchBridge = phoneWatchBridge
+        phoneWatchBridge.onLiveHeartRateFromWatch = { [weak appleHealth] bpm, at in
+            appleHealth?.applyLiveHeartRateFromWatch(bpm: bpm, measuredAt: at)
+        }
 
         self.workouts = workouts
         self.appleHealth = appleHealth
@@ -85,6 +88,10 @@ final class AppEnvironment: ObservableObject {
         self.sessionCoach = SessionCoachService(pool: pool)
         self.csvExporter = LoggyCSVExporter(pool: pool)
         phoneWatchBridge.activate()
+
+        Task { @MainActor in
+            await liveActivity.reconcileWithDatabase(workouts: workouts)
+        }
     }
 
     /// Handles `loggy://workout/live-action?...` from URLs (e.g. `onOpenURL`).

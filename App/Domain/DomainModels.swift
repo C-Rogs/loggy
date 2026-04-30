@@ -99,6 +99,48 @@ public struct WorkoutTemplateSummary: Identifiable, Hashable, Sendable {
     public var notes: String?
 }
 
+/// One line in a workout template: exercise identity plus optional targets for seeding planned sets.
+public struct TemplateExerciseRow: Identifiable, Hashable, Sendable {
+    /// `workout_template_exercise.id`
+    public var id: String
+    public var exercise: ExerciseSummary
+    public var targetSetCount: Int?
+    public var targetRepMin: Int?
+    public var targetRepMax: Int?
+    public var targetWeightKg: Double?
+    public var targetDurationSeconds: Int?
+    public var targetDistanceKm: Double?
+    public var defaultSetType: SetType
+    public var defaultRestSeconds: Int?
+    public var notes: String?
+
+    public init(
+        id: String,
+        exercise: ExerciseSummary,
+        targetSetCount: Int?,
+        targetRepMin: Int?,
+        targetRepMax: Int?,
+        targetWeightKg: Double?,
+        targetDurationSeconds: Int?,
+        targetDistanceKm: Double?,
+        defaultSetType: SetType,
+        defaultRestSeconds: Int?,
+        notes: String?
+    ) {
+        self.id = id
+        self.exercise = exercise
+        self.targetSetCount = targetSetCount
+        self.targetRepMin = targetRepMin
+        self.targetRepMax = targetRepMax
+        self.targetWeightKg = targetWeightKg
+        self.targetDurationSeconds = targetDurationSeconds
+        self.targetDistanceKm = targetDistanceKm
+        self.defaultSetType = defaultSetType
+        self.defaultRestSeconds = defaultRestSeconds
+        self.notes = notes
+    }
+}
+
 public struct ExerciseHowToInfo: Hashable, Sendable {
     public var id: String
     public var displayName: String
@@ -204,4 +246,31 @@ public struct ExerciseWeeklyStatPoint: Identifiable, Hashable, Sendable {
     public var maxWeightKg: Double?
 
     public var id: String { weekKey }
+}
+
+/// String formatting for set-entry numeric fields (avoids Swift `String(Double)` adding `.0` for whole numbers).
+public enum LoggyMetricDisplay {
+    public static func kgForTextField(_ kg: Double?) -> String {
+        guard let kg else { return "" }
+        let r = abs(kg.truncatingRemainder(dividingBy: 1))
+        if r < 1e-9 || abs(r - 1) < 1e-9 {
+            return String(Int(round(kg)))
+        }
+        var s = String(format: "%.2f", kg)
+        while s.last == "0" { s.removeLast() }
+        while s.last == "." { s.removeLast() }
+        return s
+    }
+
+    public static func kmForTextField(_ km: Double?) -> String {
+        guard let km else { return "" }
+        let r = abs(km.truncatingRemainder(dividingBy: 1))
+        if r < 1e-9 || abs(r - 1) < 1e-9 {
+            return String(Int(round(km)))
+        }
+        var s = String(format: "%.3f", km)
+        while s.last == "0" { s.removeLast() }
+        while s.last == "." { s.removeLast() }
+        return s
+    }
 }

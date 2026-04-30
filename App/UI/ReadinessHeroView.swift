@@ -197,6 +197,8 @@ struct ReadinessLearnMoreSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    Text("The headline readiness score starts from a neutral point, then adjusts for sleep hours vs short/solid tiers (population defaults at first, then personal norms after several mornings) and for recent HRV vs your rolling baseline.")
+                        .font(.body)
                     Text("Loggy combines sleep duration and heart rate variability (HRV) from Apple Health when available. Apple Watch is the most common source.")
                         .font(.body)
                     Text("After enough mornings with sleep data—and enough daily HRV ratios—short sleep and HRV tiers gently adapt to you instead of generic population cutoffs.")

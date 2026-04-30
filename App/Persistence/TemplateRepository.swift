@@ -164,11 +164,19 @@ public final class TemplateRepository: TemplateRepositoryProtocol {
     }
 
     public func listTemplateExercises(templateId: String) throws -> [ExerciseSummary] {
+        try listTemplateExerciseRows(templateId: templateId).map(\.exercise)
+    }
+
+    public func listTemplateExerciseRows(templateId: String) throws -> [TemplateExerciseRow] {
         try pool.read { db in
             try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group
+                    SELECT
+                        te.id,
+                        te.target_set_count, te.target_rep_min, te.target_rep_max, te.target_weight_kg,
+                        te.target_duration_seconds, te.target_distance_km, te.default_set_type, te.default_rest_seconds, te.notes,
+                        e.id AS eid, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group
                     FROM workout_template_exercise te
                     JOIN exercise e ON e.id = te.exercise_id
                     WHERE te.workout_template_id = ? AND te.deleted_at IS NULL
@@ -176,14 +184,64 @@ public final class TemplateRepository: TemplateRepositoryProtocol {
                 """,
                 arguments: [templateId]
             ).map { row in
-                ExerciseSummary(
+                let setType = SetType(rawValue: (row["default_set_type"] as String?) ?? "") ?? .normal
+                return TemplateExerciseRow(
                     id: row["id"],
-                    displayName: row["display_name"],
-                    exerciseMode: ExerciseMode(rawValue: row["exercise_mode"]) ?? .weightReps,
-                    isCustom: (row["is_custom"] as Int?) == 1,
-                    primaryMuscleGroup: row["primary_muscle_group"]
+                    exercise: ExerciseSummary(
+                        id: row["eid"],
+                        displayName: row["display_name"],
+                        exerciseMode: ExerciseMode(rawValue: row["exercise_mode"]) ?? .weightReps,
+                        isCustom: (row["is_custom"] as Int?) == 1,
+                        primaryMuscleGroup: row["primary_muscle_group"]
+                    ),
+                    targetSetCount: row["target_set_count"],
+                    targetRepMin: row["target_rep_min"],
+                    targetRepMax: row["target_rep_max"],
+                    targetWeightKg: row["target_weight_kg"],
+                    targetDurationSeconds: row["target_duration_seconds"],
+                    targetDistanceKm: row["target_distance_km"],
+                    defaultSetType: setType,
+                    defaultRestSeconds: row["default_rest_seconds"],
+                    notes: row["notes"]
                 )
             }
+        }
+    }
+
+    public func updateTemplateExerciseTargets(
+        templateExerciseId: String,
+        targetSetCount: Int?,
+        targetRepMin: Int?,
+        targetRepMax: Int?,
+        targetWeightKg: Double?,
+        targetDurationSeconds: Int?,
+        targetDistanceKm: Double?
+    ) throws {
+        let now = ISO8601UTC.string(from: Date())
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE workout_template_exercise
+                    SET target_set_count = ?,
+                        target_rep_min = ?,
+                        target_rep_max = ?,
+                        target_weight_kg = ?,
+                        target_duration_seconds = ?,
+                        target_distance_km = ?,
+                        updated_at = ?
+                    WHERE id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [
+                    targetSetCount,
+                    targetRepMin,
+                    targetRepMax,
+                    targetWeightKg,
+                    targetDurationSeconds,
+                    targetDistanceKm,
+                    now,
+                    templateExerciseId
+                ]
+            )
         }
     }
 }

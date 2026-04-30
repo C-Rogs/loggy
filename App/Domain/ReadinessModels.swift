@@ -86,3 +86,13 @@ public struct ReadinessInsight: Sendable, Equatable {
         self.usesPersonalizedThresholds = usesPersonalizedThresholds
     }
 }
+
+/// One calendar day of sleep (hours) for the Home readiness chart. Duration is attributed to the sample’s end day (typical “wake day”).
+public struct ReadinessSleepDayPoint: Identifiable, Hashable, Sendable {
+    public var dayKey: String
+    public var shortLabel: String
+    public var sortDate: Date
+    public var sleepHours: Double
+
+    public var id: String { dayKey }
+}

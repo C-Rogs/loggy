@@ -6,4 +6,8 @@ public enum HomeRoute: Hashable {
     case history(String)
     /// Completed (or non-active) workout inline editor.
     case editor(String)
+    /// Library: templates list (`TemplatesView`).
+    case templates
+    /// Library: one template — edit targets and start workout (`TemplateDetailView`).
+    case templateDetail(String)
 }
