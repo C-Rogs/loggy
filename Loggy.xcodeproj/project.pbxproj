@@ -52,6 +52,8 @@
 		B1A2938475665748493A20104 /* WorkoutSessionAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A2938475665748493A20103 /* WorkoutSessionAnalysisView.swift */; };
 		B1A2938475665748493A20106 /* LiveActivitySessionBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A2938475665748493A20105 /* LiveActivitySessionBinding.swift */; };
 		B1A2938475665748493A20108 /* LiveActivitySessionBindingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A2938475665748493A20107 /* LiveActivitySessionBindingTests.swift */; };
+		HRZONETST22221112222333445551 /* HeartRateZoneServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = HRZONETST22221112222333445552 /* HeartRateZoneServiceTests.swift */; };
+		ISCOACHTST22221112222333445551 /* IntraSessionCoachTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ISCOACHTST22221112222333445552 /* IntraSessionCoachTests.swift */; };
 		B63FD981F9F94EF014FDAE4C /* ISO8601.swift in Sources */ = {isa = PBXBuildFile; fileRef = 471D0D097F260C8F438FC7F2 /* ISO8601.swift */; };
 		B8E7D6C5B4A3928171605FD3 /* LoggyWorkoutDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E8D7C6B5A4938271605FD1 /* LoggyWorkoutDeepLink.swift */; };
 		BEF8C1C6E806C14EE06C6874 /* LoggyLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B7CE47489DF4E0B2579C554A /* LoggyLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -89,6 +91,8 @@
 		F90111223344556677889A05 /* ExerciseDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889905 /* ExerciseDetailViews.swift */; };
 		FCBA11112222333344445551 /* MuscleFilterChipBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCBA11112222333344445552 /* MuscleFilterChipBar.swift */; };
 		HREC22221112222333445551 /* HealthRecoveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = HREC22221112222333445552 /* HealthRecoveryService.swift */; };
+		HRZONE22221112222333445551 /* HeartRateZoneService.swift in Sources */ = {isa = PBXBuildFile; fileRef = HRZONE22221112222333445552 /* HeartRateZoneService.swift */; };
+		ISCOACH22221112222333445551 /* IntraSessionCoach.swift in Sources */ = {isa = PBXBuildFile; fileRef = ISCOACH22221112222333445552 /* IntraSessionCoach.swift */; };
 		LAINTBLDAPP010101010101010101 /* LoggyWorkoutLiveActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = LAINTFILE010101010101010101 /* LoggyWorkoutLiveActivityIntents.swift */; };
 		LAINTBLDEXT010101010101010101 /* LoggyWorkoutLiveActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = LAINTFILE010101010101010101 /* LoggyWorkoutLiveActivityIntents.swift */; };
 		LMDT01010101010101010101 /* LoggyMetricDisplayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = LMDT01010101010101010102 /* LoggyMetricDisplayTests.swift */; };
@@ -214,6 +218,8 @@
 		B1A2938475665748493A20103 /* WorkoutSessionAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionAnalysisView.swift; sourceTree = "<group>"; };
 		B1A2938475665748493A20105 /* LiveActivitySessionBinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivitySessionBinding.swift; sourceTree = "<group>"; };
 		B1A2938475665748493A20107 /* LiveActivitySessionBindingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivitySessionBindingTests.swift; sourceTree = "<group>"; };
+		HRZONETST22221112222333445552 /* HeartRateZoneServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateZoneServiceTests.swift; sourceTree = "<group>"; };
+		ISCOACHTST22221112222333445552 /* IntraSessionCoachTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntraSessionCoachTests.swift; sourceTree = "<group>"; };
 		B7CE47489DF4E0B2579C554A /* LoggyLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LoggyLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B8E350E439FB9F46552EFF9E /* ExerciseDirectoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDirectoryView.swift; sourceTree = "<group>"; };
 		BE7161FE72E944209590636B /* Resources/Loggy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Resources/Loggy.entitlements; sourceTree = "<group>"; };
@@ -249,6 +255,8 @@
 		FBB18EF63CAA9E3D76CC0273 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		FCBA11112222333344445552 /* MuscleFilterChipBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleFilterChipBar.swift; sourceTree = "<group>"; };
 		HREC22221112222333445552 /* HealthRecoveryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthRecoveryService.swift; sourceTree = "<group>"; };
+		HRZONE22221112222333445552 /* HeartRateZoneService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateZoneService.swift; sourceTree = "<group>"; };
+		ISCOACH22221112222333445552 /* IntraSessionCoach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntraSessionCoach.swift; sourceTree = "<group>"; };
 		LAINTFILE010101010101010101 /* LoggyWorkoutLiveActivityIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyWorkoutLiveActivityIntents.swift; sourceTree = "<group>"; };
 		LMDT01010101010101010102 /* LoggyMetricDisplayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyMetricDisplayTests.swift; sourceTree = "<group>"; };
 		M1M1M1M1M1M1M1M1M1M102 /* MuscleDisplayName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleDisplayName.swift; sourceTree = "<group>"; };
@@ -406,6 +414,8 @@
 			isa = PBXGroup;
 			children = (
 				B1A2938475665748493A20107 /* LiveActivitySessionBindingTests.swift */,
+				HRZONETST22221112222333445552 /* HeartRateZoneServiceTests.swift */,
+				ISCOACHTST22221112222333445552 /* IntraSessionCoachTests.swift */,
 				A1F0E1D2C3B4A596978686906 /* LoggyWorkoutDeepLinkTests.swift */,
 				F0F0F0F0F0F0F0F0F0F0F002 /* ReplaceExerciseAttributionTests.swift */,
 				T1T1T1T1T1T1T1T1T1T102 /* LiveActivitySetPreviewFormatterTests.swift */,
@@ -459,6 +469,8 @@
 				3408B66DB3D74F06B90E60166 /* AppleHealthWorkoutService.swift */,
 				AAAA111122223333444455504 /* PhoneWatchSessionBridge.swift */,
 				HREC22221112222333445552 /* HealthRecoveryService.swift */,
+				HRZONE22221112222333445552 /* HeartRateZoneService.swift */,
+				ISCOACH22221112222333445552 /* IntraSessionCoach.swift */,
 				A9E8D7C6B5A4938271605FD1 /* LoggyWorkoutDeepLink.swift */,
 			);
 			path = Services;
@@ -791,6 +803,8 @@
 				AAAA111122223333444455501 /* WatchActiveWorkoutSnapshot.swift in Sources */,
 				AAAA111122223333444455503 /* PhoneWatchSessionBridge.swift in Sources */,
 				HREC22221112222333445551 /* HealthRecoveryService.swift in Sources */,
+				HRZONE22221112222333445551 /* HeartRateZoneService.swift in Sources */,
+				ISCOACH22221112222333445551 /* IntraSessionCoach.swift in Sources */,
 				A9E8D7C6B5A4938271605FD2 /* LoggyWorkoutDeepLink.swift in Sources */,
 				C0FFEE01BADC0DE100000101 /* LoggyFeedback.swift in Sources */,
 				LAINTBLDAPP010101010101010101 /* LoggyWorkoutLiveActivityIntents.swift in Sources */,
@@ -804,6 +818,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				B1A2938475665748493A20108 /* LiveActivitySessionBindingTests.swift in Sources */,
+				HRZONETST22221112222333445551 /* HeartRateZoneServiceTests.swift in Sources */,
+				ISCOACHTST22221112222333445551 /* IntraSessionCoachTests.swift in Sources */,
 				A1F0E1D2C3B4A596978686905 /* LoggyWorkoutDeepLinkTests.swift in Sources */,
 				F0F0F0F0F0F0F0F0F0F0F001 /* ReplaceExerciseAttributionTests.swift in Sources */,
 				T1T1T1T1T1T1T1T1T1T101 /* LiveActivitySetPreviewFormatterTests.swift in Sources */,

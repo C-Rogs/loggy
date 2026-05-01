@@ -176,6 +176,17 @@ struct AppMigrator {
             }
         }
 
+        migrator.registerMigration("set_entry_hr_effort_v8") { db in
+            // ALTER TABLE ... ADD COLUMN is idempotent enough — guard against re-runs from older test fixtures.
+            let names = try String.fetchAll(db, sql: "SELECT name FROM pragma_table_info('set_entry')")
+            if !names.contains("hr_effort_pct") {
+                try db.execute(sql: "ALTER TABLE set_entry ADD COLUMN hr_effort_pct REAL")
+            }
+            if !names.contains("hr_zone") {
+                try db.execute(sql: "ALTER TABLE set_entry ADD COLUMN hr_zone INTEGER")
+            }
+        }
+
         try migrator.migrate(writer)
     }
 }

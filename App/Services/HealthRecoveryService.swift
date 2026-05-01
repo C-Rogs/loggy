@@ -14,6 +14,8 @@ final class HealthRecoveryService: ObservableObject {
 
     @Published private(set) var recoveryInsightsEnabled: Bool
     @Published private(set) var isHealthDataAvailable: Bool
+    /// Cached "HRV is meaningfully below my 14-day baseline" flag. Refreshed by the latest `fetchSnapshot()`. Used by ``IntraSessionCoach`` to mute push-harder advisories on under-recovered days.
+    @Published private(set) var isHRVLowVsBaselineCached: Bool = false
 
     init() {
         isHealthDataAvailable = HKHealthStore.isHealthDataAvailable()
@@ -105,6 +107,16 @@ final class HealthRecoveryService: ObservableObject {
 
         let sleepPersonal = ReadinessNormsStore.personalSleepThresholds(from: norms)
         let hrvPersonal = ReadinessNormsStore.personalHRVThresholds(from: norms)
+
+        // Update cached low-HRV flag for ``IntraSessionCoach`` so it can synchronously gate "push harder" advisories.
+        if let recent, let med = median, med > 0 {
+            let ratio = recent / med
+            // Treat ratios <= personal `low` threshold (or fallback 0.85) as "under-recovered today".
+            let lowThreshold = hrvPersonal?.low ?? 0.85
+            isHRVLowVsBaselineCached = ratio <= lowThreshold
+        } else {
+            isHRVLowVsBaselineCached = false
+        }
 
         return ReadinessSnapshot(
             sleepDurationSeconds: sleepSeconds > 0 ? sleepSeconds : nil,

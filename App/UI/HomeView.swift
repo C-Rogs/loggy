@@ -432,6 +432,24 @@ struct HomeView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        Section("Coach") {
+                            Picker("Intensity", selection: Binding(
+                                get: { CoachIntensityStore.load() },
+                                set: {
+                                    LoggyFeedback.picker()
+                                    CoachIntensityStore.save($0)
+                                }
+                            )) {
+                                ForEach(CoachIntensity.allCases) { v in
+                                    Text(v.label).tag(v)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            Text("Drives the live push-harder / coast / cool-down advisory after each set. Off disables it; Aggressive targets Z4.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
                         Section("Data & privacy") {
                             Text(
                                 "Workouts live in a database on this iPhone only. There’s no Loggy account and no cloud sync yet—everything works offline."

@@ -260,10 +260,24 @@ final class ActiveWorkoutViewModel: ObservableObject {
                 previousReps: prevReps,
                 currentReps: newReps
             )
+            // Capture a coarse HR-effort snapshot at set completion. We don't yet aggregate over the set window — we use the latest live BPM as a proxy. Phase 2c IntraSessionCoach uses these fields to decide push-harder vs taper advisories.
+            recordHREffortSnapshot(setId: setId)
         } catch {
             // ignore
         }
         reload()
+    }
+
+    /// Looks up the latest BPM (Watch live or Apple Health mirror) and writes the corresponding HRR fraction + zone to the just-completed set.
+    private func recordHREffortSnapshot(setId: String) {
+        let bpm: Int? = env.appleHealth.latestHeartRateBpm
+        guard let bpm else { return }
+        Task { @MainActor in
+            await HeartRateZoneService.shared.refreshIfNeeded()
+            let frac = HeartRateZoneService.shared.hrrFraction(forBpm: bpm)
+            let zone = HeartRateZoneService.shared.zone(forBpm: bpm)?.rawValue
+            try? env.workouts.recordHREffort(setId: setId, hrEffortPct: frac, hrZone: zone)
+        }
     }
 
     func toggleSetCompletion(sessionExerciseId: String, setId: String) {

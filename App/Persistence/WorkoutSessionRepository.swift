@@ -720,6 +720,17 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
         try WorkoutTotalsService().recomputeCaches(pool: pool, sessionId: sessionId)
     }
 
+    /// Records optional HR-effort fields against a completed set. Called after `completeSet` once a `HeartRateZoneService` snapshot is available. Both fields are nullable so older sets / sessions without HR data stay clean.
+    public func recordHREffort(setId: String, hrEffortPct: Double?, hrZone: Int?) throws {
+        let now = ISO8601UTC.string(from: Date())
+        try pool.write { db in
+            try db.execute(
+                sql: "UPDATE set_entry SET hr_effort_pct = ?, hr_zone = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+                arguments: [hrEffortPct, hrZone, now, setId]
+            )
+        }
+    }
+
     public func uncompleteSet(sessionId: String, sessionExerciseId: String, setId: String) throws {
         let now = ISO8601UTC.string(from: Date())
         try pool.write { db in
