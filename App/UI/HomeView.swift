@@ -282,10 +282,11 @@ struct HomeView: View {
                     try? home.refresh(env: env)
                 }
             }
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        LoggyFeedback.sheetOpened()
                         showSettings = true
                     } label: {
                         Image(systemName: "gearshape")
@@ -367,29 +368,65 @@ struct HomeView: View {
                             }
                             .labelsHidden()
                             .pickerStyle(.inline)
+                            .onChange(of: appearanceRaw) { _, _ in LoggyFeedback.picker() }
                         }
                         Section("Apple Health") {
                             Toggle("Save workouts to Health", isOn: Binding(
                                 get: { appleHealth.syncWorkoutsToHealthEnabled },
-                                set: { appleHealth.setSyncWorkoutsToHealthEnabled($0) }
+                                set: {
+                                    if $0 { LoggyFeedback.toggleOn() } else { LoggyFeedback.toggleOff() }
+                                    appleHealth.setSyncWorkoutsToHealthEnabled($0)
+                                }
                             ))
-                            Button("Allow workout & heart-rate access…") {
+                            Button {
+                                LoggyFeedback.listSelectionTap()
                                 Task { @MainActor in
                                     if let msg = await appleHealth.requestWorkoutHealthAccessFromSettings() {
                                         workoutHealthAuthMessage = msg
                                         showWorkoutHealthAuthAlert = true
+                                    } else {
+                                        // `nil` from `requestWorkoutHealthAccessFromSettings` means iOS already has an answer recorded — give the user a way to flip it in Settings instead of the button looking dead.
+                                        workoutHealthAuthMessage = "Health access has already been requested. Tap Open Settings to change it."
+                                        showWorkoutHealthAuthAlert = true
                                     }
                                 }
+                            } label: {
+                                Text("Allow workout & heart-rate access…")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
                             }
                             Text("Saves strength-training workouts plus a rough active-energy estimate for Activity rings. BPM and post-workout charts read from Health (usually written by Apple Watch) during an active session.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Toggle("Recovery insights", isOn: Binding(
                                 get: { healthRecovery.recoveryInsightsEnabled },
-                                set: { healthRecovery.setRecoveryInsightsEnabled($0) }
+                                set: {
+                                    if $0 { LoggyFeedback.toggleOn() } else { LoggyFeedback.toggleOff() }
+                                    healthRecovery.setRecoveryInsightsEnabled($0)
+                                }
                             ))
-                            Button("Allow sleep & HRV access…") {
-                                Task { await healthRecovery.requestAuthorization() }
+                            Button {
+                                LoggyFeedback.listSelectionTap()
+                                Task { @MainActor in
+                                    let outcome = await healthRecovery.requestAuthorization()
+                                    switch outcome {
+                                    case .alreadyDetermined:
+                                        workoutHealthAuthMessage = "Sleep & HRV access has already been requested. Tap Open Settings to change it."
+                                        showWorkoutHealthAuthAlert = true
+                                    case .unavailable:
+                                        workoutHealthAuthMessage = "Apple Health is not available on this device."
+                                        showWorkoutHealthAuthAlert = true
+                                    case let .failed(msg):
+                                        workoutHealthAuthMessage = "Couldn't request access: \(msg)"
+                                        showWorkoutHealthAuthAlert = true
+                                    case .prompted:
+                                        break
+                                    }
+                                }
+                            } label: {
+                                Text("Allow sleep & HRV access…")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
                             }
                             Text("Uses sleep and heart rate variability from Apple Health for advisory readiness on Home—not live workout streaming.")
                                 .font(.caption)

@@ -65,6 +65,17 @@ private struct RestExpandedIslandTrailing: View {
                 Text("Rest \(r)s")
                     .font(.caption)
                     .monospacedDigit()
+            } else {
+                // Expanded trailing must not collapse to EmptyView — zero-height slots have triggered
+                // kernel graphics failures ("Failed to create …×0 image slot") during Live Activity updates.
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(state.currentExerciseName.isEmpty ? "Workout" : state.currentExerciseName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.trailing)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.75)
+                }
             }
         }
     }
@@ -119,11 +130,9 @@ private struct IslandCompactTrailing: View {
                 Text("GO")
                     .font(.caption2.weight(.heavy))
                     .foregroundStyle(.green)
-            } else if state.restEndsAt != nil {
-                Text("Rest")
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
+            } else if let end = state.restEndsAt {
+                // Live ticking digit instead of static "Rest" — fixes the “stuck” compact trailing during rest.
+                DigitsRestCountdown(endsAt: end, useLarge: false)
             } else if let start = state.workoutStartedAt {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     DynamicIslandElapsedMinutes(startedAt: start)
@@ -273,9 +282,11 @@ private struct WorkoutLiveActivityLockScreenView: View {
     let state: WorkoutActivityAttributes.ContentState
 
     @Environment(\.colorScheme) private var colorScheme
+    /// `true` on iPhone 14 Pro+ Always-On Display. Switch to a Hevy-style black canvas + minimum ink to save power and improve glanceability outdoors.
+    @Environment(\.isLuminanceReduced) private var isLuminanceReduced
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 6) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
@@ -291,33 +302,54 @@ private struct WorkoutLiveActivityLockScreenView: View {
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
                 )
+                .opacity(isLuminanceReduced ? 0.55 : 1)
                 Text(loggyLockAppTitle)
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
+                    .opacity(isLuminanceReduced ? 0.6 : 1)
                 Spacer(minLength: 8)
                 LockScreenElapsedClock(workoutStartedAt: state.workoutStartedAt, fallbackSeconds: state.elapsedSeconds)
             }
 
             LockScreenRestAttentionBanner(expiresAt: state.restAttentionExpiresAt)
 
-            Text(state.currentExerciseName)
+            Text(state.currentExerciseName.isEmpty ? "Workout" : state.currentExerciseName)
                 .font(.headline.weight(.bold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(primaryInk)
                 .lineLimit(2)
-                .minimumScaleFactor(0.82)
+                .minimumScaleFactor(0.78)
                 .padding(.top, 1)
 
-            if !state.nextSetPreview.isEmpty {
-                Text(state.nextSetPreview)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+            // Big single-line "weight × reps" — the only number worth glancing at while pumped between sets.
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if !state.currentSetTitle.isEmpty {
+                    Text(state.currentSetTitle)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .opacity(isLuminanceReduced ? 0.6 : 1)
+                }
+                Spacer(minLength: 0)
+                Text(state.currentKgDisplay)
+                    .font(.title2.weight(.heavy))
+                    .monospacedDigit()
+                    .foregroundStyle(primaryInk)
+                Text("×")
+                    .font(.title3.weight(.regular))
+                    .foregroundStyle(.tertiary)
+                Text(state.currentRepsDisplay)
+                    .font(.title2.weight(.heavy))
+                    .monospacedDigit()
+                    .foregroundStyle(primaryInk)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+
+            // Compact health row — hidden in AOD to keep ink minimal.
+            if !isLuminanceReduced {
+                LockScreenHealthGlanceBlock(state: state)
             }
 
-            LockScreenCurrentSetRow(state: state)
-
-            LockScreenHealthGlanceBlock(state: state)
-
+            // Thin rest strip lives above the Done button so it never competes with the headline.
             if isResting {
                 LockScreenRestBlock(
                     endsAt: state.restEndsAt,
@@ -337,14 +369,25 @@ private struct WorkoutLiveActivityLockScreenView: View {
         )
     }
 
+    private var primaryInk: Color {
+        if isLuminanceReduced { return Color.white.opacity(0.85) }
+        return .primary
+    }
+
     private var cardFill: Color {
-        colorScheme == .dark
+        if isLuminanceReduced { return Color.black }
+        return colorScheme == .dark
             ? Color.white.opacity(0.09)
             : Color.white.opacity(0.38)
     }
 
+    /// "Resting" means we should render the countdown block. We must NOT consider rest active while the post-rest "GO / Start your next set" attention window is showing — otherwise the rest block and the attention banner stack on the lock screen and the layout looks stuck.
     private var isResting: Bool {
-        state.restEndsAt != nil || state.restRemainingSeconds != nil
+        guard state.restEndsAt != nil || state.restRemainingSeconds != nil else { return false }
+        if let attention = state.restAttentionExpiresAt, attention > Date() {
+            return false
+        }
+        return true
     }
 
     /// Extension bundle matches `CFBundleDisplayName` in `App/Widgets/LiveActivity/Info.plist` (kept in sync with main app).
@@ -360,49 +403,45 @@ private struct WorkoutLiveActivityLockScreenView: View {
         let wse = state.liveSessionExerciseId
         VStack(spacing: 6) {
             if let w = wse, let s = setId {
-                HStack {
-                    Spacer(minLength: 0)
-                    if isResting {
-                        HStack(spacing: 3) {
-                            Image(systemName: "checkmark.circle")
-                                .font(.caption2.weight(.semibold))
+                if isResting {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Done")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(markSetDoneDisabledFill, in: Capsule(style: .continuous))
+                    .accessibilityLabel("Mark set done, available when rest ends")
+                } else {
+                    Button(
+                        intent: LoggyMarkSetDoneLiveIntent(
+                            sessionId: sessionId,
+                            sessionExerciseId: w,
+                            setEntryId: s
+                        )
+                    ) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.subheadline.weight(.bold))
                             Text("Done")
-                                .font(.caption2.weight(.semibold))
+                                .font(.subheadline.weight(.bold))
                         }
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
                         .background(
-                            markSetDoneDisabledFill,
+                            isLuminanceReduced ? Color.green.opacity(0.55) : Color.green.opacity(0.92),
                             in: Capsule(style: .continuous)
                         )
-                        .accessibilityLabel("Mark set done, available when rest ends")
-                    } else {
-                        Button(
-                            intent: LoggyMarkSetDoneLiveIntent(
-                                sessionId: sessionId,
-                                sessionExerciseId: w,
-                                setEntryId: s
-                            )
-                        ) {
-                            HStack(spacing: 3) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.caption2.weight(.bold))
-                                Text("Done")
-                                    .font(.caption2.weight(.bold))
-                            }
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
-                            .background(Color.green.opacity(0.88), in: Capsule(style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Mark set done")
                     }
-                    Spacer(minLength: 0)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Mark set done")
                 }
             }
-            if isResting {
+            if isResting, !isLuminanceReduced {
                 Button(intent: LoggySkipRestLiveIntent(sessionId: sessionId)) {
                     Text("Skip rest")
                         .font(.caption2.weight(.semibold))

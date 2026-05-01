@@ -3,7 +3,7 @@ import Foundation
 /// Payload mirrored to Apple Watch via Watch Connectivity (ISO 8601 UTC strings per persistence rules).
 public struct WatchActiveWorkoutSnapshot: Codable, Equatable, Sendable {
     /// Bump when adding breaking WC fields so older Watch builds can degrade gracefully.
-    public static let currentWatchConnectivitySchemaVersion: Int = 2
+    public static let currentWatchConnectivitySchemaVersion: Int = 4
 
     public enum Phase: String, Codable, Sendable {
         case idle
@@ -27,6 +27,17 @@ public struct WatchActiveWorkoutSnapshot: Codable, Equatable, Sendable {
     /// `true` = iPhone chose Watch as the sole ``HKLiveWorkoutSession`` writer; `false` = iPhone owns HK; `nil` = still negotiating — Watch must **not** start a Watch HK session until `true`.
     public var watchRunsHealthKitSession: Bool?
 
+    /// Title for the next set the user should perform (e.g. `"Set 2"` / `"W"`).
+    public var currentSetTitle: String
+    /// Display string for the next set's weight (e.g. `"40.0"`, `"—"`, or `"2.50 km"`).
+    public var currentSetWeightDisplay: String
+    /// Display string for the next set's reps / duration (e.g. `"8"`, `"30s"`).
+    public var currentSetRepsDisplay: String
+    /// One-line preview after the current set (e.g. `"Next: Set 3"`); `nil` when no further set planned.
+    public var nextSetPreview: String?
+    /// UTC ISO8601 wall-clock end of the post-rest "GO / Start your next set" attention window. Watch shows the GO state until `now < restAttentionExpiresAt`.
+    public var restAttentionExpiresAt: String?
+
     enum CodingKeys: String, CodingKey {
         case watchConnectivitySchemaVersion
         case sessionId
@@ -38,6 +49,11 @@ public struct WatchActiveWorkoutSnapshot: Codable, Equatable, Sendable {
         case restStartedAt
         case healthSyncEnabled
         case watchRunsHealthKitSession
+        case currentSetTitle
+        case currentSetWeightDisplay
+        case currentSetRepsDisplay
+        case nextSetPreview
+        case restAttentionExpiresAt
     }
 
     public init(
@@ -50,6 +66,11 @@ public struct WatchActiveWorkoutSnapshot: Codable, Equatable, Sendable {
         restStartedAt: String?,
         healthSyncEnabled: Bool,
         watchRunsHealthKitSession: Bool? = nil,
+        currentSetTitle: String = "",
+        currentSetWeightDisplay: String = "—",
+        currentSetRepsDisplay: String = "—",
+        nextSetPreview: String? = nil,
+        restAttentionExpiresAt: String? = nil,
         watchConnectivitySchemaVersion: Int = WatchActiveWorkoutSnapshot.currentWatchConnectivitySchemaVersion
     ) {
         self.watchConnectivitySchemaVersion = watchConnectivitySchemaVersion
@@ -62,6 +83,11 @@ public struct WatchActiveWorkoutSnapshot: Codable, Equatable, Sendable {
         self.restStartedAt = restStartedAt
         self.healthSyncEnabled = healthSyncEnabled
         self.watchRunsHealthKitSession = watchRunsHealthKitSession
+        self.currentSetTitle = currentSetTitle
+        self.currentSetWeightDisplay = currentSetWeightDisplay
+        self.currentSetRepsDisplay = currentSetRepsDisplay
+        self.nextSetPreview = nextSetPreview
+        self.restAttentionExpiresAt = restAttentionExpiresAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -76,6 +102,11 @@ public struct WatchActiveWorkoutSnapshot: Codable, Equatable, Sendable {
         restStartedAt = try c.decodeIfPresent(String.self, forKey: .restStartedAt)
         healthSyncEnabled = try c.decode(Bool.self, forKey: .healthSyncEnabled)
         watchRunsHealthKitSession = try c.decodeIfPresent(Bool.self, forKey: .watchRunsHealthKitSession)
+        currentSetTitle = try c.decodeIfPresent(String.self, forKey: .currentSetTitle) ?? ""
+        currentSetWeightDisplay = try c.decodeIfPresent(String.self, forKey: .currentSetWeightDisplay) ?? "—"
+        currentSetRepsDisplay = try c.decodeIfPresent(String.self, forKey: .currentSetRepsDisplay) ?? "—"
+        nextSetPreview = try c.decodeIfPresent(String.self, forKey: .nextSetPreview)
+        restAttentionExpiresAt = try c.decodeIfPresent(String.self, forKey: .restAttentionExpiresAt)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -90,6 +121,11 @@ public struct WatchActiveWorkoutSnapshot: Codable, Equatable, Sendable {
         try c.encodeIfPresent(restStartedAt, forKey: .restStartedAt)
         try c.encode(healthSyncEnabled, forKey: .healthSyncEnabled)
         try c.encodeIfPresent(watchRunsHealthKitSession, forKey: .watchRunsHealthKitSession)
+        try c.encode(currentSetTitle, forKey: .currentSetTitle)
+        try c.encode(currentSetWeightDisplay, forKey: .currentSetWeightDisplay)
+        try c.encode(currentSetRepsDisplay, forKey: .currentSetRepsDisplay)
+        try c.encodeIfPresent(nextSetPreview, forKey: .nextSetPreview)
+        try c.encodeIfPresent(restAttentionExpiresAt, forKey: .restAttentionExpiresAt)
     }
 }
 

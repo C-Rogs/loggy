@@ -65,6 +65,13 @@ final class WatchHealthWorkoutSessionController: NSObject {
         do {
             let session = try HKWorkoutSession(healthStore: store, configuration: configuration)
             let builder = session.associatedWorkoutBuilder()
+            // Without an HKLiveWorkoutDataSource, the builder never auto-collects heart rate
+            // samples and `workoutBuilder(_:didCollectDataOf:)` never fires for `.heartRate`.
+            // This is what makes Hevy stream BPM while Loggy showed nothing.
+            builder.dataSource = HKLiveWorkoutDataSource(
+                healthStore: store,
+                workoutConfiguration: configuration
+            )
             workoutSession = session
             workoutBuilder = builder
             collectionStart = startedAt

@@ -25,8 +25,6 @@ struct ActiveWorkoutView: View {
     @State private var showExercisePicker = false
     @State private var howToTarget: ExerciseHowToTarget?
     @State private var showFinishSheet = false
-    @State private var confirmDiscardSession = false
-    @State private var sessionExercisePendingRemoval: String?
     @State private var showRenameWorkout = false
     @State private var renameWorkoutDraft = ""
     @State private var restTargetPickerExerciseId: String?
@@ -216,9 +214,13 @@ struct ActiveWorkoutView: View {
                                 showRenameWorkout = true
                             }
                             Divider()
-                            Button("Discard workout", systemImage: "trash", role: .destructive) {
-                                confirmDiscardSession = true
-                            }
+                            InlineConfirmButton.menuRow(
+                                title: "Discard workout",
+                                action: {
+                                    vm.discard()
+                                    dismiss()
+                                }
+                            )
                         } label: {
                             Image(systemName: "ellipsis.circle")
                                 .font(.body.weight(.medium))
@@ -308,36 +310,7 @@ struct ActiveWorkoutView: View {
                 }
             )
         }
-        .confirmationDialog(
-            "Discard this workout? Sets and exercises will be lost.",
-            isPresented: $confirmDiscardSession,
-            titleVisibility: .visible
-        ) {
-            Button("Discard workout", role: .destructive) {
-                vm.discard()
-                confirmDiscardSession = false
-                dismiss()
-            }
-            Button("Cancel", role: .cancel) {}
-        }
-        .confirmationDialog(
-            "Remove this exercise and all of its sets?",
-            isPresented: Binding(
-                get: { sessionExercisePendingRemoval != nil },
-                set: { if !$0 { sessionExercisePendingRemoval = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Remove exercise", role: .destructive) {
-                if let id = sessionExercisePendingRemoval {
-                    vm.removeSessionExercise(sessionExerciseId: id)
-                }
-                sessionExercisePendingRemoval = nil
-            }
-            Button("Cancel", role: .cancel) {
-                sessionExercisePendingRemoval = nil
-            }
-        }
+        // Discard + Remove exercise are now confirmed inline next to their triggers via `InlineConfirmButton.menuRow`.
         .sheet(isPresented: $showRenameWorkout) {
             NavigationStack {
                 Form {
@@ -524,11 +497,13 @@ struct ActiveWorkoutView: View {
 
                     Divider()
 
-                    Button(role: .destructive) {
-                        sessionExercisePendingRemoval = card.id
-                    } label: {
-                        Label("Remove exercise", systemImage: "minus.circle")
-                    }
+                    InlineConfirmButton.menuRow(
+                        title: "Remove exercise",
+                        systemImage: "minus.circle",
+                        action: {
+                            vm.removeSessionExercise(sessionExerciseId: card.id)
+                        }
+                    )
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .font(.body)
@@ -678,7 +653,7 @@ struct ActiveWorkoutView: View {
         .background(summaryStripFill, in: RoundedRectangle(cornerRadius: DesignTokens.materialCornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
         .padding(.horizontal, 0)
-        .padding(.top, 8)
+        .padding(.top, 0)
     }
 
     private func healthSyncStatusLine(healthOn: Bool) -> some View {
@@ -867,8 +842,6 @@ private struct FinishWorkoutSummarySheet: View {
     let onDiscard: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var confirmDiscardFromSummary = false
-
     private func formatClock(_ seconds: Int) -> String {
         let m = seconds / 60
         let s = seconds % 60
@@ -901,10 +874,24 @@ private struct FinishWorkoutSummarySheet: View {
                     .frame(maxWidth: .infinity)
                 }
                 Section {
-                    Button("Discard workout…", role: .destructive) {
-                        confirmDiscardFromSummary = true
-                    }
-                    .frame(maxWidth: .infinity)
+                    InlineConfirmButton(
+                        action: {
+                            onDiscard()
+                            dismiss()
+                        },
+                        idleLabel: {
+                            Text("Discard workout…")
+                                .frame(maxWidth: .infinity)
+                                .foregroundStyle(.red)
+                        },
+                        armedLabel: {
+                            Text("Tap to confirm")
+                                .frame(maxWidth: .infinity)
+                                .foregroundStyle(.white)
+                                .padding(.vertical, 6)
+                                .background(Color.red, in: Capsule(style: .continuous))
+                        }
+                    )
                 } footer: {
                     Text("Discard removes this session from history. Use if the workout was started by mistake or is invalid.")
                         .font(.caption2)
@@ -927,17 +914,6 @@ private struct FinishWorkoutSummarySheet: View {
                         dismiss()
                     }
                 }
-            }
-            .confirmationDialog(
-                "Discard this workout? Nothing will be saved.",
-                isPresented: $confirmDiscardFromSummary,
-                titleVisibility: .visible
-            ) {
-                Button("Discard workout", role: .destructive) {
-                    onDiscard()
-                    dismiss()
-                }
-                Button("Cancel", role: .cancel) {}
             }
         }
     }

@@ -14,51 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "B9E8FB43846CD04426F2AC27"
-               BuildableName = "Loggy.app"
-               BlueprintName = "Loggy"
-               ReferencedContainer = "container:Loggy.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8071162F1BA1F2439A83BB40"
-               BuildableName = "LoggyLiveActivity.appex"
-               BlueprintName = "LoggyLiveActivity"
-               ReferencedContainer = "container:Loggy.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
                BlueprintIdentifier = "F10000000000000000000001"
                BuildableName = "LoggyWatch.app"
                BlueprintName = "LoggyWatch"
-               ReferencedContainer = "container:Loggy.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "NO"
-            buildForProfiling = "NO"
-            buildForArchiving = "NO"
-            buildForAnalyzing = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A1F0E1D2C3B4A59697868690C"
-               BuildableName = "LoggyTests.xctest"
-               BlueprintName = "LoggyTests"
                ReferencedContainer = "container:Loggy.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -72,23 +30,13 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "B9E8FB43846CD04426F2AC27"
-            BuildableName = "Loggy.app"
-            BlueprintName = "Loggy"
+            BlueprintIdentifier = "F10000000000000000000001"
+            BuildableName = "LoggyWatch.app"
+            BlueprintName = "LoggyWatch"
             ReferencedContainer = "container:Loggy.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A1F0E1D2C3B4A59697868690C"
-               BuildableName = "LoggyTests.xctest"
-               BlueprintName = "LoggyTests"
-               ReferencedContainer = "container:Loggy.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -105,9 +53,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "B9E8FB43846CD04426F2AC27"
-            BuildableName = "Loggy.app"
-            BlueprintName = "Loggy"
+            BlueprintIdentifier = "F10000000000000000000001"
+            BuildableName = "LoggyWatch.app"
+            BlueprintName = "LoggyWatch"
             ReferencedContainer = "container:Loggy.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -122,9 +70,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "B9E8FB43846CD04426F2AC27"
-            BuildableName = "Loggy.app"
-            BlueprintName = "Loggy"
+            BlueprintIdentifier = "F10000000000000000000001"
+            BuildableName = "LoggyWatch.app"
+            BlueprintName = "LoggyWatch"
             ReferencedContainer = "container:Loggy.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

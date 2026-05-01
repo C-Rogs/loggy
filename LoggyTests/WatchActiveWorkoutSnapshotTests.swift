@@ -48,6 +48,38 @@ final class WatchActiveWorkoutSnapshotTests: XCTestCase {
         XCTAssertEqual(decoded.watchConnectivitySchemaVersion, 1)
     }
 
+    func testRestAttentionExpiresAtRoundTrip() throws {
+        let snap = WatchActiveWorkoutSnapshot(
+            sessionId: "s-rest",
+            workoutStartedAt: "2026-05-01T10:00:00Z",
+            phase: .active,
+            currentExerciseName: "Bench",
+            completedSetCount: 2,
+            restEndsAt: nil,
+            restStartedAt: nil,
+            healthSyncEnabled: true,
+            watchRunsHealthKitSession: true,
+            currentSetTitle: "Set 3",
+            currentSetWeightDisplay: "60.0",
+            currentSetRepsDisplay: "8",
+            nextSetPreview: nil,
+            restAttentionExpiresAt: "2026-05-01T10:05:14Z"
+        )
+        let data = try JSONEncoder().encode(snap)
+        let decoded = try JSONDecoder().decode(WatchActiveWorkoutSnapshot.self, from: data)
+        XCTAssertEqual(decoded.restAttentionExpiresAt, "2026-05-01T10:05:14Z")
+        XCTAssertEqual(decoded.watchConnectivitySchemaVersion, 4)
+    }
+
+    func testRestAttentionExpiresAtAbsentDecodesNil() throws {
+        let json = """
+        {"sessionId":"s","phase":"active","currentExerciseName":"x","completedSetCount":0,"healthSyncEnabled":true}
+        """
+        let data = try XCTUnwrap(json.data(using: .utf8))
+        let decoded = try JSONDecoder().decode(WatchActiveWorkoutSnapshot.self, from: data)
+        XCTAssertNil(decoded.restAttentionExpiresAt)
+    }
+
     func testWatchRunsHealthKitSessionTriStateRoundTrip() throws {
         let explicitFalse = WatchActiveWorkoutSnapshot(
             sessionId: "s2",

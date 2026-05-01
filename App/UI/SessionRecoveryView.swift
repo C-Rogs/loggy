@@ -9,8 +9,6 @@ struct SessionRecoveryView: View {
     let sessionId: String
     let onDone: () -> Void
 
-    @State private var confirmDiscard = false
-
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -69,14 +67,26 @@ struct SessionRecoveryView: View {
                             }
                             .buttonStyle(.bordered)
 
-                            Button(role: .destructive) {
-                                confirmDiscard = true
-                            } label: {
-                                Text("Discard workout")
-                                    .font(.body.weight(.semibold))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                            }
+                            InlineConfirmButton(
+                                action: {
+                                    discardSessionAndDismiss()
+                                },
+                                idleLabel: {
+                                    Text("Discard workout")
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(.red)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 14)
+                                },
+                                armedLabel: {
+                                    Text("Tap to confirm")
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 14)
+                                        .background(Color.red, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                }
+                            )
                             .buttonStyle(.bordered)
                         }
                         .padding(.horizontal, 20)
@@ -89,18 +99,7 @@ struct SessionRecoveryView: View {
             .background(LoggyTheme.groupedCanvas(oledPreference: loggyOLEDDark, colorScheme: colorScheme))
             .navigationTitle("Recover workout")
             .navigationBarTitleDisplayMode(.inline)
-            .confirmationDialog(
-                "Discard this workout?",
-                isPresented: $confirmDiscard,
-                titleVisibility: .visible
-            ) {
-                Button("Discard workout", role: .destructive) {
-                    discardSessionAndDismiss()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This removes the session from Loggy. Logged sets won’t appear in Past workouts.")
-            }
+            // Discard is now confirmed inline next to its trigger via `InlineConfirmButton`.
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {

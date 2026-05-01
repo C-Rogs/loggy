@@ -493,6 +493,8 @@ final class ActiveWorkoutViewModel: ObservableObject {
                 self.completeNaturalRest(timerId: capturedId)
                 // Explicit push: `refreshRest` defer does not run on this path (work item is outside `refreshRest`), and the next tick’s defer may see an unchanged signature vs `liveRestSignatureForPush`.
                 Task { @MainActor in await self.pushLiveActivity() }
+                // Force a Watch snapshot so the on-wrist UI flips to "GO / Start your next set" without waiting for the next 1 Hz tick.
+                self.pushWatchConnectivitySnapshot(force: true)
             }
         }
         scheduledRestEndWorkItem = work
@@ -659,7 +661,40 @@ final class ActiveWorkoutViewModel: ObservableObject {
     }
 
     private func makeWatchSnapshot() -> WatchActiveWorkoutSnapshot {
-        WatchActiveWorkoutSnapshot(
+        let focus = ActiveWorkoutFocus.currentSessionExerciseAndSet(in: exercises)
+        var setTitle = ""
+        var weightDisp = "—"
+        var repsDisp = "—"
+        var nextPreview: String?
+        if let focus,
+           let card = exercises.first(where: { $0.id == focus.sessionExerciseId }),
+           let cur = card.sets.first(where: { $0.id == focus.setId })
+        {
+            setTitle = setTitleForLiveActivity(cur)
+            switch card.exerciseMode {
+            case .weightReps:
+                if let w = cur.weightKg { weightDisp = String(format: "%.1f", w) }
+                repsDisp = cur.reps.map(String.init) ?? "—"
+            case .bodyweightReps:
+                weightDisp = "BW"
+                repsDisp = cur.reps.map(String.init) ?? "—"
+            case .duration:
+                weightDisp = "—"
+                repsDisp = cur.durationSeconds.map { "\($0)s" } ?? "—"
+            case .distanceDuration:
+                weightDisp = cur.distanceKm.map { String(format: "%.2f km", $0) } ?? "—"
+                repsDisp = cur.durationSeconds.map { "\($0)s" } ?? "—"
+            }
+            let preview = LiveActivitySetPreviewFormatter.nextPlannedSetLine(
+                exercises: exercises,
+                card: card,
+                currentSetId: cur.id
+            )
+            if !preview.isEmpty, preview != "—" {
+                nextPreview = preview
+            }
+        }
+        return WatchActiveWorkoutSnapshot(
             sessionId: sessionId,
             workoutStartedAt: sessionStartedAt.map { ISO8601UTC.string(from: $0) },
             phase: sessionStatus == .active ? .active : .idle,
@@ -668,7 +703,12 @@ final class ActiveWorkoutViewModel: ObservableObject {
             restEndsAt: restTimerVisual.map { ISO8601UTC.string(from: $0.endsAt) },
             restStartedAt: restTimerVisual.map { ISO8601UTC.string(from: $0.startedAt) },
             healthSyncEnabled: env.appleHealth.syncWorkoutsToHealthEnabled,
-            watchRunsHealthKitSession: env.appleHealth.watchHealthKitSnapshotHint
+            watchRunsHealthKitSession: env.appleHealth.watchHealthKitSnapshotHint,
+            currentSetTitle: setTitle,
+            currentSetWeightDisplay: weightDisp,
+            currentSetRepsDisplay: repsDisp,
+            nextSetPreview: nextPreview,
+            restAttentionExpiresAt: restAttentionExpiresAt.map { ISO8601UTC.string(from: $0) }
         )
     }
 

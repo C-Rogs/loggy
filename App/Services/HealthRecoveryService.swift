@@ -29,13 +29,31 @@ final class HealthRecoveryService: ObservableObject {
         }
     }
 
+    /// Outcome of requesting Sleep + HRV access. UI uses this to decide whether to surface the iOS Settings deep link.
+    enum AuthorizationOutcome: Equatable {
+        case prompted
+        case alreadyDetermined
+        case unavailable
+        case failed(String)
+    }
+
     /// Read-only authorization for sleep + HRV (independent of workout write/sync).
-    func requestAuthorization() async {
-        guard isHealthDataAvailable else { return }
+    @discardableResult
+    func requestAuthorization() async -> AuthorizationOutcome {
+        guard isHealthDataAvailable else { return .unavailable }
+        // `getRequestStatusForAuthorization` can return `.unnecessary` when iOS thinks the user has already answered the prompt — in which case `requestAuthorization` will silently no-op and the UI looks broken. We surface that to callers so they can offer the iOS Settings deep link.
+        var alreadyAnswered = false
+        do {
+            let status = try await store.statusForAuthorizationRequest(toShare: [], read: [sleepType, hrvType])
+            alreadyAnswered = (status == .unnecessary)
+        } catch {
+            // Non-fatal — fall through and try requestAuthorization anyway.
+        }
         do {
             try await store.requestAuthorization(toShare: [], read: [sleepType, hrvType])
+            return alreadyAnswered ? .alreadyDetermined : .prompted
         } catch {
-            // User denied or restricted.
+            return .failed(error.localizedDescription)
         }
     }
 

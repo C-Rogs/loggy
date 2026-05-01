@@ -8,6 +8,9 @@ final class WatchSessionCoordinator: NSObject, ObservableObject {
     static weak var shared: WatchSessionCoordinator?
 
     @Published private(set) var snapshot: WatchActiveWorkoutSnapshot?
+    /// Latest BPM read from the Watch ``HKLiveWorkoutBuilder`` so the on-wrist UI can show it without round-tripping through the phone.
+    @Published private(set) var liveHeartRateBpm: Int?
+    @Published private(set) var liveHeartRateMeasuredAt: Date?
 
     private let hkController = WatchHealthWorkoutSessionController()
     /// ``HKHealthStore/startWatchApp(toHandle:)`` can run before WC delivers the snapshot — finish starting HK once session id is known.
@@ -17,7 +20,10 @@ final class WatchSessionCoordinator: NSObject, ObservableObject {
         super.init()
         Self.shared = self
         hkController.onLiveHeartRate = { [weak self] bpm, at in
-            self?.sendLiveHeartRateToPhone(bpm: bpm, measuredAt: at)
+            guard let self else { return }
+            self.liveHeartRateBpm = bpm
+            self.liveHeartRateMeasuredAt = at
+            self.sendLiveHeartRateToPhone(bpm: bpm, measuredAt: at)
         }
         if WCSession.isSupported() {
             let s = WCSession.default
@@ -118,7 +124,18 @@ final class WatchSessionCoordinator: NSObject, ObservableObject {
         else { return }
         let dec = JSONDecoder()
         if let snap = try? dec.decode(WatchActiveWorkoutSnapshot.self, from: data) {
+            let prevPhase = snapshot?.phase
+            let prevAttention = snapshot?.restAttentionExpiresAt
             snapshot = snap
+            // Tactile cues mirror Hevy: a `.start` haptic when entering active, `.stop` when leaving, `.success` when the post-rest "GO" attention banner first appears.
+            if prevPhase != .active, snap.phase == .active {
+                LoggyWatchFeedback.workoutStarted()
+            } else if prevPhase == .active, snap.phase != .active {
+                LoggyWatchFeedback.workoutEnded()
+            }
+            if prevAttention == nil, snap.restAttentionExpiresAt != nil {
+                LoggyWatchFeedback.restExpired()
+            }
             Task { @MainActor in
                 await self.tryCompletePendingHealthKitLaunch()
                 await self.maybeStartHealthKitFromSnapshot(snap)

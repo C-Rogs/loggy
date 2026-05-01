@@ -65,6 +65,7 @@
 		C5D4E3F2109876543210FEDC /* 04_DATABASE_SCHEMA.sql in Resources */ = {isa = PBXBuildFile; fileRef = A1E2B3C48D5F60718293A4B5C6 /* 04_DATABASE_SCHEMA.sql */; };
 		C5E51B19C93C0B8545E805E7 /* ExerciseDirectoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C2477CA2EF689CA32E59CCF /* ExerciseDirectoryViewModel.swift */; };
 		CC227FB893CDE1E89C2FD92F /* SessionRecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 206CFCBAA4FACA56FD8C50FD /* SessionRecoveryView.swift */; };
+		ICBN11112222333344445551 /* InlineConfirmButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = ICBN11112222333344445550 /* InlineConfirmButton.swift */; };
 		D0E0E0E0E0E0E0E0E0E0E001 /* ExerciseMuscleBucket.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E0E0E0E0E0E0E0E0E0E002 /* ExerciseMuscleBucket.swift */; };
 		D0E0E0E0E0E0E0E0E0E0E003 /* ReplaceExerciseSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E0E0E0E0E0E0E0E0E0E004 /* ReplaceExerciseSheet.swift */; };
 		E1AF124EAE4FB2AF1211DBCD /* LoggyLiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B38DAB08ADF418B6D513B1 /* LoggyLiveActivityBundle.swift */; };
@@ -76,7 +77,7 @@
 		EXRF01010101010101010101 /* ExerciseRepositoryMuscleFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EXRF01010101010101010102 /* ExerciseRepositoryMuscleFilterTests.swift */; };
 		F0C4839F379D79BA156FA5FE /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74A54B83D7B564749B574822 /* AppDatabase.swift */; };
 		F0F0F0F0F0F0F0F0F0F0F001 /* ReplaceExerciseAttributionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F0F0F0F0F0F0F0F0F0F002 /* ReplaceExerciseAttributionTests.swift */; };
-		F10000000000000000000020 /* LoggyWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* LoggyWatch.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		F10000000000000000000020 /* LoggyWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* LoggyWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F100000000000000000000B2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F100000000000000000000B1 /* Assets.xcassets */; };
 		F1A2B3C4D5E6789012345601 /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6789012345602 /* Media.xcassets */; };
 		F2D67D3A8B5E8157FCB55E0A /* DomainEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 912CE9B0C18FA1DCF412F647 /* DomainEnums.swift */; };
@@ -110,6 +111,7 @@
 		WWWW111122223333444455511 /* LoggyWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = WWWW111122223333444455501 /* LoggyWatchApp.swift */; };
 		WWWW111122223333444455512 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = WWWW111122223333444455502 /* ContentView.swift */; };
 		WWWW111122223333444455513 /* WatchSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = WWWW111122223333444455503 /* WatchSessionCoordinator.swift */; };
+		WWWW111122223333444455517 /* LoggyWatchFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = WWWW111122223333444455507 /* LoggyWatchFeedback.swift */; };
 		WWWW111122223333444455514 /* WatchHealthWorkoutSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = WWWW111122223333444455504 /* WatchHealthWorkoutSessionController.swift */; };
 /* End PBXBuildFile section */
 
@@ -167,6 +169,7 @@
 		1AD1F15627EAD106080770F4 /* PRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRService.swift; sourceTree = "<group>"; };
 		1FC2912D583912D3E4E49D0A /* TemplatesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatesViewModel.swift; sourceTree = "<group>"; };
 		206CFCBAA4FACA56FD8C50FD /* SessionRecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecoveryView.swift; sourceTree = "<group>"; };
+		ICBN11112222333344445550 /* InlineConfirmButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineConfirmButton.swift; sourceTree = "<group>"; };
 		20B38DAB08ADF418B6D513B1 /* LoggyLiveActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyLiveActivityBundle.swift; sourceTree = "<group>"; };
 		2588176445A659D216DD66D1 /* HevyCSVImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HevyCSVImporter.swift; sourceTree = "<group>"; };
 		25D56E01EE0B2C5CD68FF21E /* DomainModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainModels.swift; sourceTree = "<group>"; };
@@ -267,6 +270,7 @@
 		WWWW111122223333444455501 /* LoggyWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyWatchApp.swift; sourceTree = "<group>"; };
 		WWWW111122223333444455502 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		WWWW111122223333444455503 /* WatchSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionCoordinator.swift; sourceTree = "<group>"; };
+		WWWW111122223333444455507 /* LoggyWatchFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyWatchFeedback.swift; sourceTree = "<group>"; };
 		WWWW111122223333444455504 /* WatchHealthWorkoutSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHealthWorkoutSessionController.swift; sourceTree = "<group>"; };
 		WWWW111122223333444455505 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		WWWW111122223333444455506 /* LoggyWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LoggyWatch.entitlements; sourceTree = "<group>"; };
@@ -367,6 +371,7 @@
 				FBB18EF63CAA9E3D76CC0273 /* HomeView.swift */,
 				33EB2CA7C2EA50ACC4C4FC3C /* RootView.swift */,
 				206CFCBAA4FACA56FD8C50FD /* SessionRecoveryView.swift */,
+				ICBN11112222333344445550 /* InlineConfirmButton.swift */,
 				C77A74607E4DF6D86AB5768E /* TemplatesView.swift */,
 				B1A2938475665748493A20103 /* WorkoutSessionAnalysisView.swift */,
 				S1S1S1S1S1S1S1S1S1S102 /* StatisticsViews.swift */,
@@ -517,6 +522,7 @@
 				WWWW111122223333444455502 /* ContentView.swift */,
 				WWWW111122223333444455503 /* WatchSessionCoordinator.swift */,
 				WWWW111122223333444455504 /* WatchHealthWorkoutSessionController.swift */,
+				WWWW111122223333444455507 /* LoggyWatchFeedback.swift */,
 				WWWW111122223333444455505 /* Info.plist */,
 				WWWW111122223333444455506 /* LoggyWatch.entitlements */,
 			);
@@ -622,7 +628,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2640;
 			};
 			buildConfigurationList = 2962B00B6CFD618E523A62A3 /* Build configuration list for PBXProject "Loggy" */;
 			developmentRegion = en;
@@ -697,7 +703,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n# Sync Watch .app into Loggy.app/Watch. iphoneos uses watchOS slice only (never watchsimulator).\n# ditto replaces the embedded bundle — re-sign with the iOS app identity (avoid --timestamp=if-not-present / --preserve-metadata here; they often break Run Script codesign on Xcode 15+).\nAPP=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\"\nDST=\"${APP}/Watch\"\nmkdir -p \"${DST}\"\nrmrf_copy() {\n  rm -rf \"${DST}/LoggyWatch.app\"\n  /usr/bin/ditto \"$1\" \"${DST}/LoggyWatch.app\"\n}\nresign_watch_nested() {\n  WB=\"${DST}/LoggyWatch.app\"\n  if [ \"${CODE_SIGNING_ALLOWED:-YES}\" != \"YES\" ]; then\n    return 0\n  fi\n  if [ -z \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ] || [ \"${EXPANDED_CODE_SIGN_IDENTITY}\" = \"-\" ]; then\n    return 0\n  fi\n  /usr/bin/codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY}\" --timestamp=none --generate-entitlement-der \"${WB}\"\n}\nif [ \"${PLATFORM_NAME}\" = \"iphoneos\" ]; then\n  SRC=\"${BUILD_DIR}/${CONFIGURATION}-watchos/LoggyWatch.app\"\n  if [ ! -d \"${SRC}\" ]; then\n    echo \"error: Missing ${SRC}. Scheme must build LoggyWatch for watchOS before embedding.\" >&2\n    exit 1\n  fi\n  rmrf_copy \"${SRC}\"\n  resign_watch_nested\n  exit 0\nfi\nfor sdk in watchsimulator watchos; do\n  SRC=\"${BUILD_DIR}/${CONFIGURATION}-${sdk}/LoggyWatch.app\"\n  if [ -d \"${SRC}\" ]; then\n    rmrf_copy \"${SRC}\"\n    resign_watch_nested\n    exit 0\n  fi\ndone\nif [ -d \"${BUILT_PRODUCTS_DIR}/LoggyWatch.app\" ]; then\n  rmrf_copy \"${BUILT_PRODUCTS_DIR}/LoggyWatch.app\"\n  resign_watch_nested\n  exit 0\nfi\necho \"error: LoggyWatch.app not found for ${PLATFORM_NAME}.\" >&2\nexit 1\n";
+			shellScript = "set -e\n# Sync Watch .app into Loggy.app/Watch. iphoneos uses watchOS slice only (never watchsimulator).\n# Do NOT codesign after ditto: LoggyWatch.app is already signed by the watchOS build with the\n# provisioning profile for com.loggy.app.watch. Re-signing with the iOS host identity breaks\n# that profile chain and causes Watch installd error 0xe8008015 (no valid provisioning profile).\nAPP=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\"\nDST=\"${APP}/Watch\"\nmkdir -p \"${DST}\"\nrmrf_copy() {\n  rm -rf \"${DST}/LoggyWatch.app\"\n  /usr/bin/ditto \"$1\" \"${DST}/LoggyWatch.app\"\n}\nif [ \"${PLATFORM_NAME}\" = \"iphoneos\" ]; then\n  SRC=\"${BUILD_DIR}/${CONFIGURATION}-watchos/LoggyWatch.app\"\n  if [ ! -d \"${SRC}\" ]; then\n    echo \"error: Missing ${SRC}. Scheme must build LoggyWatch for watchOS before embedding.\" >&2\n    exit 1\n  fi\n  rmrf_copy \"${SRC}\"\n  exit 0\nfi\nfor sdk in watchsimulator watchos; do\n  SRC=\"${BUILD_DIR}/${CONFIGURATION}-${sdk}/LoggyWatch.app\"\n  if [ -d \"${SRC}\" ]; then\n    rmrf_copy \"${SRC}\"\n    exit 0\n  fi\ndone\nif [ -d \"${BUILT_PRODUCTS_DIR}/LoggyWatch.app\" ]; then\n  rmrf_copy \"${BUILT_PRODUCTS_DIR}/LoggyWatch.app\"\n  exit 0\nfi\necho \"error: LoggyWatch.app not found for ${PLATFORM_NAME}.\" >&2\nexit 1\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -769,6 +775,7 @@
 				F50BCE9B3DC1BE5644BFBAA6 /* SeedDatabase.swift in Sources */,
 				A1F0E1D2C3B4A596978686901 /* SampleHistorySeeder.swift in Sources */,
 				CC227FB893CDE1E89C2FD92F /* SessionRecoveryView.swift in Sources */,
+				ICBN11112222333344445551 /* InlineConfirmButton.swift in Sources */,
 				09E5575828E741C80EB899BC /* TemplateRepository.swift in Sources */,
 				B1A2938475665748493A20104 /* WorkoutSessionAnalysisView.swift in Sources */,
 				6021E8F742245B9DC56923A7 /* TemplatesView.swift in Sources */,
@@ -820,6 +827,7 @@
 				WWWW111122223333444455512 /* ContentView.swift in Sources */,
 				WWWW111122223333444455513 /* WatchSessionCoordinator.swift in Sources */,
 				WWWW111122223333444455514 /* WatchHealthWorkoutSessionController.swift in Sources */,
+				WWWW111122223333444455517 /* LoggyWatchFeedback.swift in Sources */,
 				AAAA111122223333444455505 /* WatchActiveWorkoutSnapshot.swift in Sources */,
 				AAAA111122223333444455507 /* LiveActivityElapsedLogic.swift in Sources */,
 				AAAA111122223333444455509 /* ISO8601.swift in Sources */,
@@ -850,7 +858,6 @@
 		611CAAAAE85532F5487979F8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Widgets/LiveActivity/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -870,6 +877,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -901,8 +909,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -916,6 +926,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -926,6 +937,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -957,8 +969,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -979,6 +993,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -991,7 +1006,6 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1016,7 +1030,6 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1038,7 +1051,6 @@
 		E2E89DB0832850207B60329B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Widgets/LiveActivity/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1062,7 +1074,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = SXWJBD2V3V;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1138,7 +1150,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = SXWJBD2V3V;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

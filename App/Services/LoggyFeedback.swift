@@ -70,4 +70,83 @@ enum LoggyFeedback {
         i.prepare()
         i.impactOccurred(intensity: 0.65)
     }
+
+    /// First tap on an inline destructive button — the action is now armed and waiting for a confirmation tap.
+    static func destructiveArmed() {
+        let n = UINotificationFeedbackGenerator()
+        n.prepare()
+        n.notificationOccurred(.warning)
+    }
+
+    /// Second tap that actually fires the destructive action.
+    static func destructiveCommitted() {
+        let n = UINotificationFeedbackGenerator()
+        n.prepare()
+        n.notificationOccurred(.error)
+    }
+
+    /// Inline destructive button reverted before the second tap.
+    static func destructiveCancelled() {
+        let s = UISelectionFeedbackGenerator()
+        s.prepare()
+        s.selectionChanged()
+    }
+
+    /// Picker / segmented control / wheel changed value.
+    static func picker() {
+        Self.throttle(.picker) {
+            let s = UISelectionFeedbackGenerator()
+            s.prepare()
+            s.selectionChanged()
+        }
+    }
+
+    /// Stepper / numeric tap (kg/reps).
+    static func numericIncrement() {
+        Self.throttle(.numericIncrement) {
+            let i = UIImpactFeedbackGenerator(style: .rigid)
+            i.prepare()
+            i.impactOccurred(intensity: 0.45)
+        }
+    }
+
+    /// User-initiated sheet presentation.
+    static func sheetOpened() {
+        let i = UIImpactFeedbackGenerator(style: .soft)
+        i.prepare()
+        i.impactOccurred(intensity: 0.55)
+    }
+
+    static func tabChanged() {
+        let s = UISelectionFeedbackGenerator()
+        s.prepare()
+        s.selectionChanged()
+    }
+
+    static func toggleOn() {
+        let i = UIImpactFeedbackGenerator(style: .light)
+        i.prepare()
+        i.impactOccurred(intensity: 0.7)
+    }
+
+    static func toggleOff() {
+        let i = UIImpactFeedbackGenerator(style: .light)
+        i.prepare()
+        i.impactOccurred(intensity: 0.45)
+    }
+
+    // MARK: - Throttle
+
+    private enum ThrottleKey: String { case picker, numericIncrement }
+
+    private static var lastFireAt: [ThrottleKey: TimeInterval] = [:]
+    private static let throttleInterval: TimeInterval = 0.2
+
+    /// Skip rapid bursts so a long-press / repeat tap doesn't buzz continuously.
+    private static func throttle(_ key: ThrottleKey, _ work: () -> Void) {
+        let now = Date().timeIntervalSinceReferenceDate
+        if let last = lastFireAt[key], now - last < throttleInterval { return }
+        lastFireAt[key] = now
+        work()
+    }
 }
