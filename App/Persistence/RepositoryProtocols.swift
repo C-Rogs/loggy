@@ -48,6 +48,12 @@ public protocol WorkoutSessionRepositoryProtocol: Sendable {
     func loadSessionForEdit(sessionId: String) throws -> (status: WorkoutSessionStatus, title: String?)
     func syncActiveWorkoutFocus(sessionId: String, sessionExerciseId: String?, setEntryId: String?) throws
     func weeklyCompletedVolumeByWeek(limitWeeks: Int) throws -> [WeeklyVolumePoint]
+    /// Per-day completed-session count + avg RPE rows for the GitHub-style contribution heatmap.
+    func dailyContributionRows(limitDays: Int) throws -> [DailyContributionRow]
+    /// Records HR-effort fields for a completed set.
+    func recordHREffort(setId: String, hrEffortPct: Double?, hrZone: Int?) throws
+    /// Average RPE of completed sets for the session, or nil when no RPE has been recorded.
+    func sessionAverageRPE(sessionId: String) throws -> Double?
     func weeklyStatsForExercise(exerciseId: String, limitWeeks: Int) throws -> [ExerciseWeeklyStatPoint]
     func exerciseHistoryBuckets(exerciseId: String, range: ExerciseHistoryTimeRange) throws -> [ExerciseHistoryBucket]
     /// Completed sets attributed to `exercise.primary_muscle_group` (via `logged_exercise_id` when set).

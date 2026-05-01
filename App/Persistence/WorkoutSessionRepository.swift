@@ -720,6 +720,25 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
         try WorkoutTotalsService().recomputeCaches(pool: pool, sessionId: sessionId)
     }
 
+    /// Average RPE of completed sets in a finished session, or `nil` when no set has an RPE recorded. Used by Apple Fitness Training Load contribution (`HKQuantityType.workoutEffortScore`).
+    public func sessionAverageRPE(sessionId: String) throws -> Double? {
+        try pool.read { db in
+            let row = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT AVG(se.rpe) AS avg_rpe
+                    FROM set_entry se
+                    INNER JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
+                    WHERE wse.workout_session_id = ?
+                      AND se.status = 'completed' AND se.deleted_at IS NULL
+                      AND se.rpe IS NOT NULL
+                """,
+                arguments: [sessionId]
+            )
+            return row?["avg_rpe"] as Double?
+        }
+    }
+
     /// Records optional HR-effort fields against a completed set. Called after `completeSet` once a `HeartRateZoneService` snapshot is available. Both fields are nullable so older sets / sessions without HR data stay clean.
     public func recordHREffort(setId: String, hrEffortPct: Double?, hrZone: Int?) throws {
         let now = ISO8601UTC.string(from: Date())
@@ -954,6 +973,53 @@ public final class WorkoutSessionRepository: WorkoutSessionRepositoryProtocol {
                 """,
                 arguments: [sessionExerciseId, setEntryId, now, sessionId]
             )
+        }
+    }
+
+    /// Daily contribution rows for the GitHub-style heatmap. Each row is one local calendar day with the number of completed sessions and the average RPE of completed sets in those sessions (nullable when no set has an RPE recorded).
+    public func dailyContributionRows(limitDays: Int) throws -> [DailyContributionRow] {
+        let days = max(7, limitDays)
+        return try pool.read { db in
+            let sessions = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT date(started_at) AS d,
+                           COUNT(*) AS sessions
+                    FROM workout_session
+                    WHERE status = 'completed' AND deleted_at IS NULL
+                      AND date(started_at) >= date('now', ?)
+                    GROUP BY d
+                """,
+                arguments: ["-\(days) days"]
+            )
+            let rpeRows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT date(se.completed_at) AS d,
+                           AVG(se.rpe) AS avg_rpe
+                    FROM set_entry se
+                    INNER JOIN workout_session ws ON ws.id = (
+                        SELECT workout_session_id FROM workout_session_exercise WHERE id = se.workout_session_exercise_id
+                    )
+                    WHERE se.status = 'completed' AND se.deleted_at IS NULL
+                      AND ws.status = 'completed' AND ws.deleted_at IS NULL
+                      AND se.rpe IS NOT NULL
+                      AND date(se.completed_at) >= date('now', ?)
+                    GROUP BY d
+                """,
+                arguments: ["-\(days) days"]
+            )
+            var rpeByDay: [String: Double] = [:]
+            for r in rpeRows {
+                if let d: String = r["d"], let avg: Double = r["avg_rpe"] {
+                    rpeByDay[d] = avg
+                }
+            }
+            return sessions.compactMap { row in
+                guard let d: String = row["d"] else { return nil }
+                let count: Int = row["sessions"] ?? 0
+                return DailyContributionRow(dayKey: d, sessionCount: count, avgRpe: rpeByDay[d])
+            }
         }
     }
 

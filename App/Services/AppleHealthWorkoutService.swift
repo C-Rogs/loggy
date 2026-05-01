@@ -398,13 +398,27 @@ final class AppleHealthWorkoutService: ObservableObject {
 
     private func finishBuilder(_ builder: HKWorkoutBuilder, start: Date, end: Date) async {
         let energy = Self.makeEstimatedActiveEnergySample(energyType: energyType, start: start, end: end)
-        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+        let storeRef = self.store
+        let sessionIdRef = self.attachedSessionId
+        let workoutsRef = self.workouts
+        let finished: HKWorkout? = await withCheckedContinuation { (cont: CheckedContinuation<HKWorkout?, Never>) in
             builder.add([energy]) { _, _ in
                 builder.endCollection(withEnd: end) { _, _ in
-                    builder.finishWorkout { _, _ in
-                        cont.resume()
+                    builder.finishWorkout { workout, _ in
+                        cont.resume(returning: workout)
                     }
                 }
+            }
+        }
+        if let finished, let sessionIdRef {
+            // Resolve session avg RPE on the main actor (DB access) and let HealthKit Training Load see this strength workout. Soft-fails on older OS / no-data.
+            let avgRPE = (try? workoutsRef.sessionAverageRPE(sessionId: sessionIdRef)) ?? nil
+            if let avgRPE {
+                await AppleFitnessEffortRecorder.recordSessionEffort(
+                    store: storeRef,
+                    workout: finished,
+                    sessionAverageRPE: avgRPE
+                )
             }
         }
     }

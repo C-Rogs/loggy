@@ -35,8 +35,8 @@ struct StatisticsHubView: View {
                             }
                             .font(.subheadline)
                         }
-                        NavigationLink("View body breakdown") {
-                            MuscleDistributionBodyView()
+                        NavigationLink("View body map") {
+                            BodyMapStatsView()
                         }
                         .font(.subheadline.weight(.semibold))
                     }
@@ -70,12 +70,21 @@ struct StatisticsHubView: View {
                     )
                 }
                 NavigationLink {
-                    MuscleDistributionBodyView()
+                    BodyMapStatsView()
                 } label: {
                     advancedRow(
                         title: "Muscle distribution (Body)",
                         subtitle: "Weekly heat map of muscles worked.",
                         systemImage: "figure.stand"
+                    )
+                }
+                NavigationLink {
+                    WorkoutContributionHeatmapView()
+                } label: {
+                    advancedRow(
+                        title: "Workout streak",
+                        subtitle: "GitHub-style 26-week grid blended with average RPE.",
+                        systemImage: "calendar"
                     )
                 }
                 NavigationLink {

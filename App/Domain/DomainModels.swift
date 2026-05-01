@@ -233,6 +233,13 @@ public struct MuscleGroupSetCount: Identifiable, Hashable, Sendable {
     public var id: String { muscleSlug }
 }
 
+/// Single day's contribution row for the GitHub-style heatmap. `dayKey` is `YYYY-MM-DD` in UTC (matches `date(started_at)` in SQLite). `avgRpe` is `nil` if no set in that day had an RPE recorded.
+public struct DailyContributionRow: Hashable, Sendable {
+    public var dayKey: String
+    public var sessionCount: Int
+    public var avgRpe: Double?
+}
+
 public struct WeeklyVolumePoint: Identifiable, Hashable, Sendable {
     public var weekKey: String
     public var totalKg: Double
