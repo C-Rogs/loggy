@@ -45,6 +45,8 @@ final class AppEnvironment: ObservableObject {
     let liveActivity: LiveActivityManager
     let nextExerciseSuggestion: NextExerciseSuggestionService
     let sessionCoach: SessionCoachService
+    let trainingBaseline: TrainingBaselineService
+    let healthKitDailySignals: HealthKitDailySignalsService
     let csvExporter: LoggyCSVExporter
     let appleHealth: AppleHealthWorkoutService
     let healthRecovery: HealthRecoveryService
@@ -86,6 +88,8 @@ final class AppEnvironment: ObservableObject {
         self.liveActivity = LiveActivityManager()
         self.nextExerciseSuggestion = NextExerciseSuggestionService(pool: pool)
         self.sessionCoach = SessionCoachService(pool: pool)
+        self.trainingBaseline = TrainingBaselineService(pool: pool)
+        self.healthKitDailySignals = HealthKitDailySignalsService()
         self.csvExporter = LoggyCSVExporter(pool: pool)
         phoneWatchBridge.activate()
 

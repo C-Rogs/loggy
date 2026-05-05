@@ -28,6 +28,9 @@ final class ActiveWorkoutViewModel: ObservableObject {
     let sessionId: String
     private let env: AppEnvironment
 
+    /// Approximate working-set window when lift start time is unknown — mean HR over recent Watch + HealthKit samples beats a single end-of-set BPM reading.
+    private static let hrEffortAggregationSeconds: TimeInterval = 75
+
     @Published private(set) var sessionTitle: String = ""
     @Published private(set) var sessionStatus: WorkoutSessionStatus = .active
     @Published private(set) var exercises: [SessionExerciseCard] = []
@@ -40,6 +43,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
     @Published private(set) var restTimerVisual: RestTimerVisual?
     @Published private(set) var suggestedNextExercise: ExerciseSummary?
     @Published private(set) var sessionStartedAt: Date?
+    @Published private(set) var lastCoachAdvisory: CoachAdvisory?
 
     private var tick: AnyCancellable?
     /// Fires rest-complete feedback once per rest timer when wall clock passes `ends_at` while the row is still `running`.
@@ -52,6 +56,8 @@ final class ActiveWorkoutViewModel: ObservableObject {
     private var scheduledRestEndWorkItem: DispatchWorkItem?
     private var pendingRestNotificationKey: String?
     private var lastWatchPushAt: Date = .distantPast
+    /// Wall time when any set was last completed — used to estimate rest vs target for intra-session coaching.
+    private var lastSetCompletedWallTime: Date?
 
     init(sessionId: String, env: AppEnvironment) {
         self.sessionId = sessionId
@@ -60,6 +66,9 @@ final class ActiveWorkoutViewModel: ObservableObject {
 
     func onAppear() {
         reload()
+        if env.healthRecovery.recoveryInsightsEnabled {
+            Task { await env.healthRecovery.fetchSnapshot() }
+        }
         tick?.cancel()
         tick = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
@@ -242,14 +251,27 @@ final class ActiveWorkoutViewModel: ObservableObject {
     }
 
     func completeSet(sessionExerciseId: String, setId: String) {
+        let mark = Date()
         let prevReps = exercises
             .first(where: { $0.id == sessionExerciseId })?
             .sets.first(where: { $0.id == setId })?
             .reps
 
+        let restRawSec = lastSetCompletedWallTime.map { Int(mark.timeIntervalSince($0)) }
+        let targetRest = exercises.first(where: { $0.id == sessionExerciseId })?.targetRestSeconds
+        let restDeltaSeconds: Int? = {
+            guard let raw = restRawSec, let t = targetRest else { return nil }
+            return raw - t
+        }()
+        let loggedRpe = exercises
+            .first(where: { $0.id == sessionExerciseId })?
+            .sets.first(where: { $0.id == setId })?
+            .rpe
+
         do {
             try env.workouts.completeSet(sessionId: sessionId, sessionExerciseId: sessionExerciseId, setId: setId)
             LoggyFeedback.setCompleted()
+            lastSetCompletedWallTime = mark
             let newReps = try env.database.pool.read { db in
                 try Int.fetchOne(db, sql: "SELECT reps FROM set_entry WHERE id = ?", arguments: [setId])
             }
@@ -260,23 +282,64 @@ final class ActiveWorkoutViewModel: ObservableObject {
                 previousReps: prevReps,
                 currentReps: newReps
             )
-            // Capture a coarse HR-effort snapshot at set completion. We don't yet aggregate over the set window — we use the latest live BPM as a proxy. Phase 2c IntraSessionCoach uses these fields to decide push-harder vs taper advisories.
-            recordHREffortSnapshot(setId: setId)
+            runPostSetCompletionPipeline(
+                setId: setId,
+                restDeltaSeconds: restDeltaSeconds,
+                loggedRpe: loggedRpe
+            )
         } catch {
             // ignore
         }
         reload()
     }
 
-    /// Looks up the latest BPM (Watch live or Apple Health mirror) and writes the corresponding HRR fraction + zone to the just-completed set.
-    private func recordHREffortSnapshot(setId: String) {
-        let bpm: Int? = env.appleHealth.latestHeartRateBpm
-        guard let bpm else { return }
+    /// Writes HR-effort fields and evaluates rules-first intra-session coaching (RPE / rest / HR priority).
+    private func runPostSetCompletionPipeline(setId: String, restDeltaSeconds: Int?, loggedRpe: Double?) {
+        let completionTime = Date()
         Task { @MainActor in
             await HeartRateZoneService.shared.refreshIfNeeded()
-            let frac = HeartRateZoneService.shared.hrrFraction(forBpm: bpm)
-            let zone = HeartRateZoneService.shared.zone(forBpm: bpm)?.rawValue
-            try? env.workouts.recordHREffort(setId: setId, hrEffortPct: frac, hrZone: zone)
+            let profile = HeartRateZoneService.shared.profile
+            let sessionStart = sessionStartedAt ?? completionTime
+            let windowStart = max(sessionStart, completionTime.addingTimeInterval(-Self.hrEffortAggregationSeconds))
+            let samples = env.appleHealth.workoutHeartRateSamples(from: windowStart, to: completionTime)
+
+            var frac: Double?
+            var zoneInt: Int?
+            var zoneEnum: HeartRateZone?
+
+            if let profile {
+                if samples.count >= 2 {
+                    frac = HeartRateZoneMath.effortScore(samples: samples, profile: profile)
+                    let meanBpm = samples.map(\.bpm).reduce(0, +) / Double(samples.count)
+                    zoneEnum = HeartRateZoneMath.zone(bpm: Int(meanBpm.rounded()), profile: profile)
+                    zoneInt = zoneEnum?.rawValue
+                } else if samples.count == 1 {
+                    let bpm = Int(samples[0].bpm.rounded())
+                    frac = HeartRateZoneMath.hrrFraction(bpm: bpm, profile: profile)
+                    zoneEnum = HeartRateZoneMath.zone(bpm: bpm, profile: profile)
+                    zoneInt = zoneEnum?.rawValue
+                } else if let bpm = env.appleHealth.latestHeartRateBpm {
+                    frac = HeartRateZoneMath.hrrFraction(bpm: bpm, profile: profile)
+                    zoneEnum = HeartRateZoneMath.zone(bpm: bpm, profile: profile)
+                    zoneInt = zoneEnum?.rawValue
+                }
+            } else {
+                frac = nil
+                zoneInt = nil
+                zoneEnum = nil
+            }
+
+            try? env.workouts.recordHREffort(setId: setId, hrEffortPct: frac, hrZone: zoneInt)
+
+            let input = IntraSessionCoachInput(
+                lastSetEffort: frac,
+                lastSetZone: zoneEnum,
+                intensity: CoachIntensityStore.load(),
+                hrvLowVsBaseline: env.healthRecovery.isHRVLowVsBaselineCached,
+                lastSetRPE: loggedRpe,
+                restDeltaSeconds: restDeltaSeconds
+            )
+            lastCoachAdvisory = IntraSessionCoach.evaluate(input)
         }
     }
 

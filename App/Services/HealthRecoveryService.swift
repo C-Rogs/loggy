@@ -108,17 +108,7 @@ final class HealthRecoveryService: ObservableObject {
         let sleepPersonal = ReadinessNormsStore.personalSleepThresholds(from: norms)
         let hrvPersonal = ReadinessNormsStore.personalHRVThresholds(from: norms)
 
-        // Update cached low-HRV flag for ``IntraSessionCoach`` so it can synchronously gate "push harder" advisories.
-        if let recent, let med = median, med > 0 {
-            let ratio = recent / med
-            // Treat ratios <= personal `low` threshold (or fallback 0.85) as "under-recovered today".
-            let lowThreshold = hrvPersonal?.low ?? 0.85
-            isHRVLowVsBaselineCached = ratio <= lowThreshold
-        } else {
-            isHRVLowVsBaselineCached = false
-        }
-
-        return ReadinessSnapshot(
+        let snapshot = ReadinessSnapshot(
             sleepDurationSeconds: sleepSeconds > 0 ? sleepSeconds : nil,
             hrvRecentMS: recent,
             hrvBaselineMedianMS: median,
@@ -133,6 +123,11 @@ final class HealthRecoveryService: ObservableObject {
             usesPersonalSleepNorms: sleepPersonal != nil,
             usesPersonalHRVNorms: hrvPersonal != nil
         )
+
+        // Single definition with ``ReadinessEvaluator`` so Home bands and intra-session HRV gate cannot drift apart.
+        isHRVLowVsBaselineCached = ReadinessEvaluator.isHRVBelowRecoveryGate(snapshot)
+
+        return snapshot
     }
 
     /// Per-day asleep hours (last `days` local calendar days) for the Home chart. Requires recovery insights enabled.

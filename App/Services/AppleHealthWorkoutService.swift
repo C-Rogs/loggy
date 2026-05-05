@@ -48,6 +48,9 @@ final class AppleHealthWorkoutService: ObservableObject {
     private var heartRatePollTimer: AnyCancellable?
     /// End time of the HR sample currently reflected in ``latestHeartRateBpm`` — anchored batches are unordered; never regress to an older reading.
     private var lastAppliedHeartRateSampleEnd: Date = .distantPast
+    /// Bounded HR samples during the attached workout (Watch live + HealthKit) for set-window averaging at completion.
+    private var workoutHeartRateHistory: [HeartRateSamplePoint] = []
+    private let maxWorkoutHeartRateHistoryCount = 512
     private var liveEnergyTimer: AnyCancellable?
     private var healthKitWriter: HealthKitWorkoutWriter = .none {
         didSet {
@@ -128,6 +131,7 @@ final class AppleHealthWorkoutService: ObservableObject {
             stopLiveEnergyPolling()
             latestHeartRateBpm = nil
             cumulativeActiveEnergyHealthKitKcal = nil
+            workoutHeartRateHistory.removeAll()
         }
     }
 
@@ -213,8 +217,14 @@ final class AppleHealthWorkoutService: ObservableObject {
     /// Watch ``HKLiveWorkoutBuilder`` → WC — always wins over HealthKit poll (same clock as on-watch workout UI).
     func applyLiveHeartRateFromWatch(bpm: Int, measuredAt: Date) {
         guard syncWorkoutsToHealthEnabled, attachedSessionId != nil else { return }
+        appendWorkoutHeartRateSample(date: measuredAt, bpm: Double(bpm))
         latestHeartRateBpm = bpm
         lastAppliedHeartRateSampleEnd = measuredAt
+    }
+
+    /// Samples with ``HeartRateSamplePoint/date`` in `[start, end]` (typical: last ~75s before set completion).
+    func workoutHeartRateSamples(from start: Date, to end: Date) -> [HeartRateSamplePoint] {
+        workoutHeartRateHistory.filter { $0.date >= start && $0.date <= end }.sorted { $0.date < $1.date }
     }
 
     func activeWorkoutScreenAppeared(sessionId: String, sessionStartedAt: Date) {
@@ -226,6 +236,7 @@ final class AppleHealthWorkoutService: ObservableObject {
             discardBuilderOnly()
             stopHeartRateQuery()
             heartAnchor = nil
+            workoutHeartRateHistory.removeAll()
             attachedSessionId = sessionId
             sessionStart = sessionStartedAt
             healthKitWriter = .none
@@ -366,6 +377,15 @@ final class AppleHealthWorkoutService: ObservableObject {
         heartAnchor = nil
         cumulativeActiveEnergyHealthKitKcal = nil
         healthKitWriter = .none
+        workoutHeartRateHistory.removeAll()
+    }
+
+    private func appendWorkoutHeartRateSample(date: Date, bpm: Double) {
+        guard attachedSessionId != nil else { return }
+        workoutHeartRateHistory.append(HeartRateSamplePoint(date: date, bpm: bpm))
+        if workoutHeartRateHistory.count > maxWorkoutHeartRateHistoryCount {
+            workoutHeartRateHistory.removeFirst(workoutHeartRateHistory.count - maxWorkoutHeartRateHistoryCount)
+        }
     }
 
     private func discardBuilderOnly() {
@@ -539,6 +559,7 @@ final class AppleHealthWorkoutService: ObservableObject {
             let bpm = sample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
             Task { @MainActor in
                 guard sample.endDate >= self.lastAppliedHeartRateSampleEnd else { return }
+                self.appendWorkoutHeartRateSample(date: sample.endDate, bpm: bpm)
                 self.lastAppliedHeartRateSampleEnd = sample.endDate
                 self.latestHeartRateBpm = Int(round(bpm))
             }
@@ -563,10 +584,15 @@ final class AppleHealthWorkoutService: ObservableObject {
     private func applyHeartRateSamples(_ samples: [HKSample]?) {
         guard let samples else { return }
         let quantities = samples.compactMap { $0 as? HKQuantitySample }
+        let unit = HKUnit.count().unitDivided(by: .minute())
+        for q in quantities {
+            let bpm = q.quantity.doubleValue(for: unit)
+            appendWorkoutHeartRateSample(date: q.endDate, bpm: bpm)
+        }
         guard let best = quantities.max(by: compareHeartRateSamplesByRecency) else { return }
         guard best.endDate >= lastAppliedHeartRateSampleEnd else { return }
         lastAppliedHeartRateSampleEnd = best.endDate
-        let bpm = best.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
+        let bpm = best.quantity.doubleValue(for: unit)
         latestHeartRateBpm = Int(round(bpm))
     }
 

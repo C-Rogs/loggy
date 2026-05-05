@@ -667,11 +667,23 @@ struct HomeView: View {
         coachReadinessLoading = true
         coachReadinessInsight = nil
         Task {
+            var readinessBand: ReadinessBand?
             if healthRecovery.recoveryInsightsEnabled {
                 coachReadinessInsight = await healthRecovery.fetchReadinessInsight()
+                readinessBand = coachReadinessInsight?.band
             } else {
                 coachReadinessInsight = nil
             }
+
+            let baseline = try? env.trainingBaseline.fetchSnapshot()
+            if let title = try? env.sessionCoach.suggestedSessionTitle(
+                readinessBand: readinessBand,
+                baseline: baseline
+            ) {
+                coachTitleDraft = title
+            }
+
+            await env.healthKitDailySignals.requestAuxiliaryReadAuthorization()
             coachReadinessLoading = false
         }
     }

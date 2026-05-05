@@ -90,6 +90,8 @@
 		F50BCE9B3DC1BE5644BFBAA6 /* SeedDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FAE7A6E415DA3FB73424FC6 /* SeedDatabase.swift */; };
 		F90111223344556677889A01 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889901 /* DesignTokens.swift */; };
 		F90111223344556677889A02 /* SessionCoachService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889902 /* SessionCoachService.swift */; };
+		BLBASE22221112222333445551 /* TrainingBaselineService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BLBASE22221112222333445552 /* TrainingBaselineService.swift */; };
+		HKDLY22221112222333445551 /* HealthKitDailySignalsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = HKDLY22221112222333445552 /* HealthKitDailySignalsService.swift */; };
 		F90111223344556677889A03 /* NextExerciseSuggestionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889903 /* NextExerciseSuggestionService.swift */; };
 		F90111223344556677889A04 /* LoggyCSVExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889904 /* LoggyCSVExporter.swift */; };
 		F90111223344556677889A05 /* ExerciseDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90111223344556677889905 /* ExerciseDetailViews.swift */; };
@@ -105,6 +107,7 @@
 		MAD00011112222333344445551 /* MainActorDebouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = MAD00011112222333344445552 /* MainActorDebouncer.swift */; };
 		MTAX01010101010101010101 /* MuscleTaxonomy.swift in Sources */ = {isa = PBXBuildFile; fileRef = MTAX01010101010101010102 /* MuscleTaxonomy.swift */; };
 		RET22221112222333445551 /* ReadinessEvaluatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = RET22221112222333445552 /* ReadinessEvaluatorTests.swift */; };
+		TBLN22221112222333445551 /* TrainingBaselineServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TBLN22221112222333445552 /* TrainingBaselineServiceTests.swift */; };
 		REV22221112222333344445551 /* ReadinessEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = REV22221112222333344445552 /* ReadinessEvaluator.swift */; };
 		RHERO22221112222333445551 /* ReadinessHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = RHERO22221112222333445552 /* ReadinessHeroView.swift */; };
 		RM22221112222333344445551 /* ReadinessModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = RM22221112222333344445552 /* ReadinessModels.swift */; };
@@ -258,6 +261,8 @@
 		F4F879CFA6BEEDB7F088BE38 /* ExercisePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePickerSheet.swift; sourceTree = "<group>"; };
 		F90111223344556677889901 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		F90111223344556677889902 /* SessionCoachService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCoachService.swift; sourceTree = "<group>"; };
+		BLBASE22221112222333445552 /* TrainingBaselineService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingBaselineService.swift; sourceTree = "<group>"; };
+		HKDLY22221112222333445552 /* HealthKitDailySignalsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitDailySignalsService.swift; sourceTree = "<group>"; };
 		F90111223344556677889903 /* NextExerciseSuggestionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextExerciseSuggestionService.swift; sourceTree = "<group>"; };
 		F90111223344556677889904 /* LoggyCSVExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyCSVExporter.swift; sourceTree = "<group>"; };
 		F90111223344556677889905 /* ExerciseDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDetailViews.swift; sourceTree = "<group>"; };
@@ -273,6 +278,7 @@
 		MAD00011112222333344445552 /* MainActorDebouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainActorDebouncer.swift; sourceTree = "<group>"; };
 		MTAX01010101010101010102 /* MuscleTaxonomy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleTaxonomy.swift; sourceTree = "<group>"; };
 		RET22221112222333445552 /* ReadinessEvaluatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessEvaluatorTests.swift; sourceTree = "<group>"; };
+		TBLN22221112222333445552 /* TrainingBaselineServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingBaselineServiceTests.swift; sourceTree = "<group>"; };
 		REV22221112222333344445552 /* ReadinessEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessEvaluator.swift; sourceTree = "<group>"; };
 		RHERO22221112222333445552 /* ReadinessHeroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessHeroView.swift; sourceTree = "<group>"; };
 		RM22221112222333344445552 /* ReadinessModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessModels.swift; sourceTree = "<group>"; };
@@ -437,6 +443,7 @@
 				EXRF01010101010101010102 /* ExerciseRepositoryMuscleFilterTests.swift */,
 				LMDT01010101010101010102 /* LoggyMetricDisplayTests.swift */,
 				RET22221112222333445552 /* ReadinessEvaluatorTests.swift */,
+				TBLN22221112222333445552 /* TrainingBaselineServiceTests.swift */,
 				RTMS01010101010101010102 /* RestTimerServiceTests.swift */,
 				UFETEST11112222333445552 /* UserFacingErrorTests.swift */,
 				WSAT01010101010101010102 /* WorkoutSessionActiveSessionTemplateTests.swift */,
@@ -476,6 +483,8 @@
 				1AD1F15627EAD106080770F4 /* PRService.swift */,
 				AB36AA4EE8BD568F3021D318 /* RestTimerService.swift */,
 				F90111223344556677889902 /* SessionCoachService.swift */,
+				BLBASE22221112222333445552 /* TrainingBaselineService.swift */,
+				HKDLY22221112222333445552 /* HealthKitDailySignalsService.swift */,
 				9FAE7A6E415DA3FB73424FC6 /* SeedDatabase.swift */,
 				A1F0E1D2C3B4A596978686902 /* SampleHistorySeeder.swift */,
 				36BF2C65A011413DCAD0E1AF /* WorkoutCalculationService.swift */,
@@ -791,6 +800,8 @@
 				9790FDE683FFB66E9C806805 /* LiveActivityManager.swift in Sources */,
 				B1A2938475665748493A20106 /* LiveActivitySessionBinding.swift in Sources */,
 				F90111223344556677889A02 /* SessionCoachService.swift in Sources */,
+				BLBASE22221112222333445551 /* TrainingBaselineService.swift in Sources */,
+				HKDLY22221112222333445551 /* HealthKitDailySignalsService.swift in Sources */,
 				43806AF62C3AB74A4DE7AE35 /* LoggyApp.swift in Sources */,
 				05505B65F1E59BA3F78E8E0C /* PRService.swift in Sources */,
 				23B8415DA20D4C8BC51D408B /* PreviousValueMatcher.swift in Sources */,
@@ -846,6 +857,7 @@
 				T2T2T2T2T2T2T2T2T201 /* MuscleGroupStatsRepositoryTests.swift in Sources */,
 				EXRF01010101010101010101 /* ExerciseRepositoryMuscleFilterTests.swift in Sources */,
 				RET22221112222333445551 /* ReadinessEvaluatorTests.swift in Sources */,
+				TBLN22221112222333445551 /* TrainingBaselineServiceTests.swift in Sources */,
 				LMDT01010101010101010101 /* LoggyMetricDisplayTests.swift in Sources */,
 				RTMS01010101010101010101 /* RestTimerServiceTests.swift in Sources */,
 				WSAT01010101010101010101 /* WorkoutSessionActiveSessionTemplateTests.swift in Sources */,

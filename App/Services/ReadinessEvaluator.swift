@@ -4,6 +4,19 @@ import Foundation
 public enum ReadinessEvaluator: Sendable {
     /// Minimum baseline HRV samples before ratio is trusted.
     public static let minimumBaselineHRVSamples = 5
+
+    /// Same rule as ``HealthRecoveryService`` when caching `isHRVLowVsBaselineCached`: recent SDNN vs median baseline at or below the personalized (or default) low tier — intra-session coaching treats this as “do not push harder.”
+    public static func isHRVBelowRecoveryGate(_ snapshot: ReadinessSnapshot) -> Bool {
+        guard snapshot.hrvBaselineSampleCount >= minimumBaselineHRVSamples,
+              let recent = snapshot.hrvRecentMS,
+              let base = snapshot.hrvBaselineMedianMS,
+              base > 0
+        else { return false }
+        let ratio = recent / base
+        let lowThreshold = snapshot.hrvLowRatio ?? hrvLowRatio
+        return ratio <= lowThreshold
+    }
+
     /// Short sleep threshold (hours).
     public static let shortSleepHours: Double = 5.0
     /// Comfortable sleep threshold (hours).

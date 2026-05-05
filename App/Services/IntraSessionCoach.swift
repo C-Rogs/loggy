@@ -46,31 +46,60 @@ public struct IntraSessionCoachInput: Sendable {
     public var lastSetZone: HeartRateZone?
     public var intensity: CoachIntensity
     public var hrvLowVsBaseline: Bool
+    /// Logged RPE for the set just completed (1…10), when present — **primary** fatigue signal vs HR.
+    public var lastSetRPE: Double?
+    /// `actual rest − target rest` for this set (seconds). Large positive ⇒ extra recovery between sets.
+    public var restDeltaSeconds: Int?
 
     public init(
         lastSetEffort: Double?,
         lastSetZone: HeartRateZone?,
         intensity: CoachIntensity,
-        hrvLowVsBaseline: Bool
+        hrvLowVsBaseline: Bool,
+        lastSetRPE: Double? = nil,
+        restDeltaSeconds: Int? = nil
     ) {
         self.lastSetEffort = lastSetEffort
         self.lastSetZone = lastSetZone
         self.intensity = intensity
         self.hrvLowVsBaseline = hrvLowVsBaseline
+        self.lastSetRPE = lastSetRPE
+        self.restDeltaSeconds = restDeltaSeconds
     }
 }
 
 /// Pure rules-engine — per project rules: rules first, LLM text only for embellishment.
+///
+/// **Priority:** (1) HRV recovery gate → (2) very high RPE → (3) very long rest vs target → (4) HR zone vs intensity target.
+/// HR never overrides hard exertion or recovery messaging.
 public enum IntraSessionCoach {
     public static func evaluate(_ input: IntraSessionCoachInput) -> CoachAdvisory? {
         guard let target = input.intensity.targetZone else { return nil }
 
-        // HRV gate: if user is under-recovered, never push harder.
+        // (1) HRV gate: if user is under-recovered, never push harder.
         if input.hrvLowVsBaseline {
             return CoachAdvisory(
                 headline: "HRV is low today",
                 detail: "Consider lighter sets or longer rest.",
                 tone: .recover
+            )
+        }
+
+        // (2) Logged RPE — autoregulation beats HR for strength.
+        if let rpe = input.lastSetRPE, rpe >= 9 {
+            return CoachAdvisory(
+                headline: "Very hard set (RPE \(Int(rpe.rounded())))",
+                detail: "Optional lighter load or fewer reps next.",
+                tone: .taper
+            )
+        }
+
+        // (3) Rest vs plan — only when HR zone is unavailable (otherwise HR guidance carries effort feedback).
+        if input.lastSetZone == nil, let delta = input.restDeltaSeconds, delta > 120 {
+            return CoachAdvisory(
+                headline: "Extra rest vs target",
+                detail: "Ready when you are.",
+                tone: .neutral
             )
         }
 

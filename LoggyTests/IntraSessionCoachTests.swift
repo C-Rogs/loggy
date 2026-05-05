@@ -45,4 +45,45 @@ final class IntraSessionCoachTests: XCTestCase {
         )
         XCTAssertEqual(r?.tone, .taper)
     }
+
+    func testHighRPETakesPriorityOverLowHRZone() {
+        let r = IntraSessionCoach.evaluate(
+            IntraSessionCoachInput(
+                lastSetEffort: 0.4,
+                lastSetZone: .z1,
+                intensity: .standard,
+                hrvLowVsBaseline: false,
+                lastSetRPE: 9.5,
+                restDeltaSeconds: nil
+            )
+        )
+        XCTAssertEqual(r?.tone, .taper)
+        XCTAssertTrue(r?.headline.contains("RPE") ?? false)
+    }
+
+    func testExtraRestAdvisoryOnlyWithoutHRZone() {
+        let longRest = IntraSessionCoach.evaluate(
+            IntraSessionCoachInput(
+                lastSetEffort: nil,
+                lastSetZone: nil,
+                intensity: .standard,
+                hrvLowVsBaseline: false,
+                lastSetRPE: nil,
+                restDeltaSeconds: 150
+            )
+        )
+        XCTAssertEqual(longRest?.tone, .neutral)
+
+        let withZone = IntraSessionCoach.evaluate(
+            IntraSessionCoachInput(
+                lastSetEffort: 0.5,
+                lastSetZone: .z1,
+                intensity: .standard,
+                hrvLowVsBaseline: false,
+                lastSetRPE: nil,
+                restDeltaSeconds: 150
+            )
+        )
+        XCTAssertEqual(withZone?.tone, .push)
+    }
 }

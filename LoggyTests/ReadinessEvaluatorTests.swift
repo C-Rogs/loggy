@@ -120,6 +120,28 @@ final class ReadinessEvaluatorTests: XCTestCase {
         XCTAssertEqual(ReadinessEvaluator.evaluate(personal).band, .moderate)
         XCTAssertTrue(ReadinessEvaluator.evaluate(personal).usesPersonalizedThresholds)
     }
+
+    func testHRVRecoveryGateMatchesRatioRule() {
+        let below = ReadinessSnapshot(
+            sleepDurationSeconds: nil,
+            hrvRecentMS: 40,
+            hrvBaselineMedianMS: 50,
+            hrvBaselineSampleCount: ReadinessEvaluator.minimumBaselineHRVSamples,
+            hadSleepAuthorization: true,
+            hadHRVAuthorization: true
+        )
+        XCTAssertTrue(ReadinessEvaluator.isHRVBelowRecoveryGate(below))
+
+        let ok = ReadinessSnapshot(
+            sleepDurationSeconds: nil,
+            hrvRecentMS: 44,
+            hrvBaselineMedianMS: 50,
+            hrvBaselineSampleCount: ReadinessEvaluator.minimumBaselineHRVSamples,
+            hadSleepAuthorization: true,
+            hadHRVAuthorization: true
+        )
+        XCTAssertFalse(ReadinessEvaluator.isHRVBelowRecoveryGate(ok))
+    }
 }
 
 final class ReadinessNormsStoreTests: XCTestCase {
