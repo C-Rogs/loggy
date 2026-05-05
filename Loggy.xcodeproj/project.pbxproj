@@ -11,6 +11,7 @@
 		05505B65F1E59BA3F78E8E0C /* PRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD1F15627EAD106080770F4 /* PRService.swift */; };
 		09E5575828E741C80EB899BC /* TemplateRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6320FEEDC3624EF5571AFBD3 /* TemplateRepository.swift */; };
 		1351ED42B910A3666A41C568 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBB18EF63CAA9E3D76CC0273 /* HomeView.swift */; };
+		INFOTIP21112222333445551 /* LoggyInfoTipButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = INFOTIP21112222333445552 /* LoggyInfoTipButton.swift */; };
 		23B8415DA20D4C8BC51D408B /* PreviousValueMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7EAC399AEC2918FF1C0D61 /* PreviousValueMatcher.swift */; };
 		25A3AC1B6A85B387AF0ECDB9 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 2E7533B442E8044A00077652 /* GRDB */; };
 		2FCFFE0560C20BFA1592C96E /* RestTimerRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989BBD37B43E46D371C627DB /* RestTimerRepository.swift */; };
@@ -267,6 +268,7 @@
 		F90111223344556677889904 /* LoggyCSVExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyCSVExporter.swift; sourceTree = "<group>"; };
 		F90111223344556677889905 /* ExerciseDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseDetailViews.swift; sourceTree = "<group>"; };
 		FBB18EF63CAA9E3D76CC0273 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		INFOTIP21112222333445552 /* LoggyInfoTipButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggyInfoTipButton.swift; sourceTree = "<group>"; };
 		FCBA11112222333344445552 /* MuscleFilterChipBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleFilterChipBar.swift; sourceTree = "<group>"; };
 		HREC22221112222333445552 /* HealthRecoveryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthRecoveryService.swift; sourceTree = "<group>"; };
 		HRZONE22221112222333445552 /* HeartRateZoneService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateZoneService.swift; sourceTree = "<group>"; };
@@ -392,6 +394,7 @@
 				F4F879CFA6BEEDB7F088BE38 /* ExercisePickerSheet.swift */,
 				D0E0E0E0E0E0E0E0E0E0E004 /* ReplaceExerciseSheet.swift */,
 				B1A2938475665748493A20101 /* HomeRoute.swift */,
+				INFOTIP21112222333445552 /* LoggyInfoTipButton.swift */,
 				FBB18EF63CAA9E3D76CC0273 /* HomeView.swift */,
 				33EB2CA7C2EA50ACC4C4FC3C /* RootView.swift */,
 				206CFCBAA4FACA56FD8C50FD /* SessionRecoveryView.swift */,
@@ -790,6 +793,7 @@
 				68BFA651B4EF67C57E3AFC10 /* ExerciseRepository.swift in Sources */,
 				D0E0E0E0E0E0E0E0E0E0E003 /* ReplaceExerciseSheet.swift in Sources */,
 				4DC9AB25DC9195A43A04B606 /* HevyCSVImporter.swift in Sources */,
+				INFOTIP21112222333445551 /* LoggyInfoTipButton.swift in Sources */,
 				1351ED42B910A3666A41C568 /* HomeView.swift in Sources */,
 				RHERO22221112222333445551 /* ReadinessHeroView.swift in Sources */,
 				B1A2938475665748493A20102 /* HomeRoute.swift in Sources */,

@@ -89,7 +89,7 @@ struct ReadinessHeroView: View {
                 .shadow(color: accent.opacity(0.22), radius: compact ? 8 : 14, y: compact ? 4 : 6)
 
             VStack(alignment: .leading, spacing: compact ? 6 : 10) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                HStack(alignment: .top, spacing: 10) {
                     primaryGlyph(symbol: insight.glyphPrimary, accent: accent)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(insight.headline)
@@ -106,17 +106,20 @@ struct ReadinessHeroView: View {
                                 .padding(.top, 2)
                         }
                     }
-                    Spacer(minLength: 0)
+                    Spacer(minLength: 4)
+                    LoggyInfoTipButton(
+                        title: "How readiness is scored",
+                        message: """
+                        Loggy starts from a neutral score, then adjusts for sleep hours vs short/solid tiers (personalized after enough Apple Health history) and for recent HRV (SDNN) vs a rolling median baseline from about the past two weeks.
+
+                        This is rules-based—not machine learning—and does not predict performance. Live heart rate during training is separate.
+                        """,
+                        accessibilityLabel: "How readiness is calculated",
+                        moreLabel: "Full explanation",
+                        onMore: { onLearnMore() }
+                    )
                 }
 
-                if !compact {
-                    Button(action: onLearnMore) {
-                        Label("About this insight", systemImage: "info.circle")
-                            .font(.caption.weight(.semibold))
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(accent)
-                }
             }
             .padding(compact ? EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 46) : EdgeInsets(top: 18, leading: 18, bottom: 18, trailing: 54))
 

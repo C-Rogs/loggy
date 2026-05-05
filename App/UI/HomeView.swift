@@ -85,16 +85,22 @@ struct HomeView: View {
 
                 if !sleepDayBars.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Recent sleep")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text("Recent sleep")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            LoggyInfoTipButton(
+                                title: "Recent sleep chart",
+                                message: """
+                                Each bar is asleep time summed per wake-up day from Apple Health sleep analysis.
+
+                                Readiness scoring compares that sleep to short/solid thresholds—personalized after enough logged mornings—and blends in HRV vs your baseline (same snapshot as the card above).
+                                """,
+                                accessibilityLabel: "How the sleep chart relates to readiness"
+                            )
+                            Spacer(minLength: 0)
+                        }
                         ReadinessRecentSleepChart(bars: sleepDayBars)
-                        Text(
-                            "Bars show asleep time summed per wake-up day from Apple Health. Readiness scoring compares that sleep window to short/solid thresholds (personalized after enough data) and blends in HRV vs your baseline."
-                        )
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.vertical, 4)
                     .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 10, trailing: 16))
@@ -138,11 +144,20 @@ struct HomeView: View {
                 }
                 .frame(height: 200)
                 .accessibilityLabel("Completed training volume by calendar week")
-                Text("Completed workout volume by calendar week (last ~4 months).")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
             } header: {
-                Text("Weekly volume")
+                HStack {
+                    Text("Weekly volume")
+                    Spacer(minLength: 8)
+                    LoggyInfoTipButton(
+                        title: "Weekly volume",
+                        message: """
+                        Totals come from completed workouts in your Loggy history: each bar is sum of session volume for that calendar week (same cache used elsewhere in the app).
+
+                        About the last four months of completed sessions—tap a workout in Past workouts for detail.
+                        """,
+                        accessibilityLabel: "How weekly volume is calculated"
+                    )
+                }
             }
             .listRowBackground(Color.clear)
         }
@@ -208,12 +223,6 @@ struct HomeView: View {
                             : "Suggest a title and start an empty workout."
                     )
 
-                    Text(
-                        "Coach suggests a workout title (and optional readiness from Apple Health). You add exercises next—there’s no auto-generated program."
-                    )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
                     Button {
                         startEmptyWorkoutQuick()
                     } label: {
@@ -223,11 +232,20 @@ struct HomeView: View {
                     }
                     .buttonStyle(.bordered)
                     .disabled(home.activeSummary != nil)
-                    Text("Same as Coach, without the sheet—opens an empty session so you can train immediately.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                 } header: {
-                    Text("Start")
+                    HStack {
+                        Text("Start")
+                        Spacer(minLength: 8)
+                        LoggyInfoTipButton(
+                            title: "Starting a workout",
+                            message: """
+                            Coach picks a title from your recent workout names and optional rolling volume/readiness hints—then you add exercises on the next screen. No auto-generated program.
+
+                            “Start empty workout” skips the sheet and opens a blank session immediately.
+                            """,
+                            accessibilityLabel: "How Coach chooses a title"
+                        )
+                    }
                 }
                 .listRowBackground(Color.clear)
 
@@ -244,11 +262,15 @@ struct HomeView: View {
                         StatisticsHubView()
                     }
                 } header: {
-                    Text("Library")
-                } footer: {
-                    Text("Templates save repeatable routines. Exercise directory lists everything you can log. Statistics summarize trends.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    HStack {
+                        Text("Library")
+                        Spacer(minLength: 8)
+                        LoggyInfoTipButton(
+                            title: "Library",
+                            message: "Templates store repeatable routines. The exercise directory is the full catalog you can add to a session. Statistics roll up trends from completed history.",
+                            accessibilityLabel: "What Library contains"
+                        )
+                    }
                 }
 
                 pastWorkoutsSection
@@ -370,7 +392,7 @@ struct HomeView: View {
                             .pickerStyle(.inline)
                             .onChange(of: appearanceRaw) { _, _ in LoggyFeedback.picker() }
                         }
-                        Section("Apple Health") {
+                        Section {
                             Toggle("Save workouts to Health", isOn: Binding(
                                 get: { appleHealth.syncWorkoutsToHealthEnabled },
                                 set: {
@@ -395,9 +417,6 @@ struct HomeView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .contentShape(Rectangle())
                             }
-                            Text("Saves strength-training workouts plus a rough active-energy estimate for Activity rings. BPM and post-workout charts read from Health (usually written by Apple Watch) during an active session.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
                             Toggle("Recovery insights", isOn: Binding(
                                 get: { healthRecovery.recoveryInsightsEnabled },
                                 set: {
@@ -428,11 +447,22 @@ struct HomeView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .contentShape(Rectangle())
                             }
-                            Text("Uses sleep and heart rate variability from Apple Health for advisory readiness on Home—not live workout streaming.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        } header: {
+                            HStack {
+                                Text("Apple Health")
+                                Spacer(minLength: 8)
+                                LoggyInfoTipButton(
+                                    title: "Apple Health in Loggy",
+                                    message: """
+                                    Workouts and heart rate (training): When enabled, Loggy can write your strength session to Health and read heart rate and active energy so the live workout screen and Activity rings stay in sync. Live BPM usually comes from your Apple Watch during the session.
+
+                                    Recovery (Home): Sleep and HRV use a separate read permission. They power the readiness card only—not the same stream as live workout heart rate.
+                                    """,
+                                    accessibilityLabel: "How Apple Health is used in Loggy"
+                                )
+                            }
                         }
-                        Section("Coach") {
+                        Section {
                             Picker("Intensity", selection: Binding(
                                 get: { CoachIntensityStore.load() },
                                 set: {
@@ -445,38 +475,62 @@ struct HomeView: View {
                                 }
                             }
                             .pickerStyle(.segmented)
-                            Text("Drives the live push-harder / coast / cool-down advisory after each set. Off disables it; Aggressive targets Z4.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        } header: {
+                            HStack {
+                                Text("Coach")
+                                Spacer(minLength: 8)
+                                LoggyInfoTipButton(
+                                    title: "Coach intensity",
+                                    message: """
+                                    After each completed set, Loggy can compare your heart-rate zone to the band you pick here (light → Z2 … aggressive → Z4) and show a short advisory.
+
+                                    It never edits sets for you. Off disables those hints. Recovery from low HRV still overrides “push harder” messaging.
+                                    """,
+                                    accessibilityLabel: "How coach intensity works"
+                                )
+                            }
                         }
 
-                        Section("Data & privacy") {
-                            Text(
-                                "Workouts live in a database on this iPhone only. There’s no Loggy account and no cloud sync yet—everything works offline."
-                            )
-                            .font(.subheadline)
-                            Text(
-                                "Apple Health is optional: you can write workouts and energy, and read sleep/HRV for recovery hints. Export anytime below."
-                            )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Section {
+                            HStack(alignment: .center, spacing: 10) {
+                                Image(systemName: "lock.fill")
+                                    .foregroundStyle(.secondary)
+                                Text("Workouts stay on this iPhone.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer(minLength: 8)
+                                LoggyInfoTipButton(
+                                    title: "Data & privacy",
+                                    message: """
+                                    Your log lives in a SQLite database on device. There is no Loggy account and no cloud sync yet—everything works offline.
+
+                                    Apple Health is optional: grant it to mirror workouts and energy, or to read sleep/HRV for readiness. You can export CSV backups from the Data section below.
+                                    """,
+                                    accessibilityLabel: "Data storage and privacy"
+                                )
+                            }
+                        } header: {
+                            Text("Data & privacy")
                         }
-                        Section("Data") {
+                        Section {
                             Button("Import Hevy CSV…") { showImporter = true }
-                            Text("In Hevy, export your backup CSV, then pick that file here to bring history into Loggy.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
                             Button("Export workouts CSV…") {
                                 exportCSV()
                             }
-                            Text("Your log stays only on this iPhone until you export. Save a CSV occasionally as a backup outside Loggy.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Section("About") {
-                            Text("Export is a Loggy-native CSV of completed sessions and sets for spreadsheets or backup.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        } header: {
+                            HStack {
+                                Text("Data")
+                                Spacer(minLength: 8)
+                                LoggyInfoTipButton(
+                                    title: "Import & export",
+                                    message: """
+                                    Import brings completed workouts from a Hevy backup CSV into Loggy’s database (duplicate files are skipped safely).
+
+                                    Export writes Loggy’s native CSV of completed sessions and sets—handy for spreadsheets or backup. It is not the same shape Hevy uses for import. Nothing leaves the device until you save or share the file.
+                                    """,
+                                    accessibilityLabel: "How import and export work"
+                                )
+                            }
                         }
                     }
                     .scrollContentBackground(.hidden)
@@ -520,7 +574,12 @@ struct HomeView: View {
                                     insight: coachReadinessInsight,
                                     isLoading: coachReadinessLoading,
                                     compact: true,
-                                    onLearnMore: {}
+                                    onLearnMore: {
+                                        showCoachStart = false
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                            showReadinessLearnMore = true
+                                        }
+                                    }
                                 )
                                 .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                                 .listRowBackground(Color.clear)
@@ -528,9 +587,16 @@ struct HomeView: View {
                         }
                         Section {
                             TextField("Workout title", text: $coachTitleDraft)
-                            Text("Edit the title if you like. The session starts with no exercises—you’ll add them from the workout screen.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                        } footer: {
+                            HStack {
+                                Spacer(minLength: 0)
+                                LoggyInfoTipButton(
+                                    title: "Session title",
+                                    message: "You can edit the title now or later. The workout begins with no exercises—you add them from the active workout screen.",
+                                    accessibilityLabel: "About the workout title"
+                                )
+                            }
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                         }
                         Section {
                             Button("Start workout") {

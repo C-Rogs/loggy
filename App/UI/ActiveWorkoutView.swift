@@ -647,6 +647,18 @@ struct ActiveWorkoutView: View {
                 Spacer(minLength: 0)
                 summaryMetricColumn(title: "Reps", value: "\(vm.totalRepCount)")
             }
+            HStack {
+                Spacer(minLength: 0)
+                LoggyInfoTipButton(
+                    title: "Session totals",
+                    message: """
+                    Elapsed is wall time since the workout started.
+
+                    Volume sums weight × reps for completed sets (kg). Sets and reps count only completed rows. “Previous” on each set is from your history, separate from these totals.
+                    """,
+                    accessibilityLabel: "How session summary numbers are calculated"
+                )
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -722,6 +734,21 @@ struct ActiveWorkoutView: View {
                     }
                 }
             }
+            LoggyInfoTipButton(
+                title: healthOn ? "Live vitals" : "Apple Health sync",
+                message: healthOn
+                    ? """
+                    Heart rate comes from your Apple Watch live workout when available, or the latest heart-rate samples Health has for this session window.
+
+                    Active energy shows Health’s cumulative kcal for the session when Apple has written it; otherwise Loggy shows a rough MET-based estimate from time and a default body weight.
+                    """
+                    : """
+                    Turn on “Save workouts to Health” in Settings to write this session and to read live BPM and energy during training.
+
+                    Recovery insights on Home use separate Sleep/HRV permissions—they do not drive this row.
+                    """,
+                accessibilityLabel: healthOn ? "How live heart rate and calories work" : "Why Health sync is off"
+            )
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 8)
